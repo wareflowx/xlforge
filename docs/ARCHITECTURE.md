@@ -139,40 +139,230 @@ class OpenpyxlEngine(Engine):
 ## Directory Structure
 
 ```
-xlforge/
-├── __init__.py              # CLI entry point, app export
-├── __main__.py              # python -m xlforge entry
-├── core.py                  # SDK: business logic
-├── errors.py                # Error codes and exceptions
-├── result.py                # Result[T, E] and Maybe[T] types
-├── context.py               # Context management (active file/sheet)
-├── engines/
+xlforge/                                  # Package root
+│
+├── __init__.py                           # CLI app entry point
+│   typer.Typer() instance named `app`    # Exports: app
+│
+├── __main__.py                           # Entry point for `python -m xlforge`
+│   from xlforge import app
+│   if __name__ == "__main__":
+│       app()
+│
+├── result.py                             # Functional error handling types
+│   ├── Ok[T], Err[E]                     # Result variants
+│   ├── Some[T], Nothing[T]                # Maybe variants
+│   └── is_ok(), is_err(), is_some()      # Type guards
+│
+├── errors.py                             # Error codes and exceptions
+│   ├── class ErrorCode(IntEnum)          # All 127 error codes
+│   ├── class XlforgeError(Exception)    # Base exception with code + message
+│   └── ERROR_MESSAGES: dict[int, str]    # Code → human message mapping
+│
+├── context.py                            # CLI context management
+│   ├── class Context                    # Active file/sheet state
+│   ├── DEFAULT_CONTEXT: Context          # Global default context
+│   ├── get_context()                     # Get current context
+│   └── set_context(file, sheet)          # Set active context
+│
+├── core.py                               # SDK: business logic layer
+│   ├── cell_get(), cell_set()           # Cell operations
+│   ├── sheet_list(), sheet_create()      # Sheet operations
+│   ├── file_open(), file_save()          # File operations
+│   ├── parse_cell_ref()                  # "Data!A1" → (sheet, coord)
+│   ├── resolve_path()                     # Relative → absolute path
+│   ├── coerce_value()                    # String → typed value
+│   └── get_engine()                      # Engine selection
+│
+├── engines/                              # API: Excel interaction layer
 │   ├── __init__.py
-│   ├── base.py             # Engine abstract class
-│   ├── xlwings.py         # xlwings implementation
-│   ├── openpyxl.py        # openpyxl implementation
-│   └── duckdb.py          # DuckDB SQL engine
-├── commands/
-│   ├── __init__.py
-│   ├── file.py             # file open, save, close, info, kill
-│   ├── cell.py             # cell get, set, formula, clear, copy, bulk
-│   ├── sheet.py            # sheet list, create, delete, rename
-│   ├── format.py           # format cell, range
-│   ├── data.py             # import csv, export csv
-│   ├── table.py            # table create, link, sync-schema
-│   ├── chart.py            # chart create
-│   ├── validation.py       # validation create
-│   ├── protection.py       # freeze, protect, unprotect
-│   ├── app.py              # app visible, calculate, focus, alert
-│   ├── checkpoint.py       # checkpoint create, restore
-│   ├── branch.py           # branch operations
-│   ├── watch.py            # watch start, stop
-│   ├── sql.py              # sql query, push, pull
-│   └── semantic.py         # index, query, describe
-└── utils/
-    ├── path.py             # Path resolution utilities
-    ├── cell.py             # Cell reference parsing
-    └── types.py            # Type coercion utilities
+│   ├── base.py                           # Engine interface
+│   │   ├── class Engine(ABC)             # Abstract base class
+│   │   ├── class CellValue               # NamedTuple: value, type, formula
+│   │   └── METHOD_NOT_SUPPORTED          # Error code 9 helper
+│   │
+│   ├── xlwings_.py                      # xlwings implementation
+│   │   ├── class XlwingsEngine(Engine)
+│   │   ├── WORKBOOK_CACHE: dict          # PID → workbook instance
+│   │   ├── _get_or_create_workbook()     # COM session management
+│   │   ├── _ensure_sheet()               # Sheet access with auto-create
+│   │   └── _com_error_handler()          # COM → ErrorCode mapping
+│   │
+│   ├── openpyxl_.py                     # openpyxl implementation
+│   │   ├── class OpenpyxlEngine(Engine)
+│   │   ├── _load_workbook()              # File → Workbook with lock retry
+│   │   ├── _save_workbook()              # Save with backup
+│   │   └── _validate_sheet()             # Sheet existence check
+│   │
+│   └── duckdb.py                         # DuckDB SQL engine
+│       ├── class DuckDBEngine(Engine)
+│       ├── _execute_query()              # Run SQL, return results
+│       └── _register_excel()             # Register .xlsx as DuckDB table
+│
+├── commands/                             # CLI: Typer command groups
+│   ├── __init__.py                       # Command group imports
+│   │
+│   ├── file.py                           # file command group
+│   │   ├── open(file, engine, visible)   # Open/create workbook
+│   │   ├── save(file, output, dry_run)   # Save workbook
+│   │   ├── close(file, force)           # Close workbook
+│   │   ├── info(file, json)             # Show metadata + PID
+│   │   ├── kill(file_or_pid, force)     # Kill Excel process
+│   │   ├── recover(file, force)         # Kill + reopen
+│   │   ├── check(file, repair)          # Health check
+│   │   ├── monitor(file, timeout)        # Watch for changes
+│   │   └── template(action, name, file) # Template management
+│   │
+│   ├── cell.py                           # cell command group
+│   │   ├── get(file, cell, json, formula, calculate)  # Read cell
+│   │   ├── set(file, cell, value, type)               # Write cell
+│   │   ├── formula(file, cell, formula)               # Set formula
+│   │   ├── clear(file, cell, format_only, value_only) # Clear
+│   │   ├── copy(file, src, dst)                       # Copy cell
+│   │   ├── bulk(file, pattern, filter, format, set)   # Bulk ops
+│   │   ├── search(file, query, sheet, json)           # Find cell
+│   │   └── fill(file, range, direction, stop)        # Auto-fill
+│   │
+│   ├── sheet.py                          # sheet command group
+│   │   ├── list(file, json)              # List all sheets
+│   │   ├── create(file, name, copy_from) # Create sheet
+│   │   ├── delete(file, name)            # Delete sheet
+│   │   ├── rename(file, old, new)        # Rename sheet
+│   │   ├── copy(file, src, dst)         # Copy sheet
+│   │   └── use(file, sheet)              # Set active sheet
+│   │
+│   ├── format.py                         # format command group
+│   │   ├── cell(file, cell, bold, size, color, ...)
+│   │   ├── range(file, range, pattern, border, ...)
+│   │   └── apply(file, range, style_name)
+│   │
+│   ├── data.py                           # data command group
+│   │   ├── import_csv(file, csv, sheet, cell, has_headers, ...)
+│   │   └── export_csv(file, range, csv, headers)
+│   │
+│   ├── table.py                          # table command group
+│   │   ├── create(file, range, csv, style, freeze_header)
+│   │   ├── link(file, range, db_url, table, mode, key_col)
+│   │   ├── sync_schema(file, range, strict, prune)
+│   │   └── refresh(file, range)
+│   │
+│   ├── chart.py                          # chart command group
+│   │   └── create(file, range, csv, type, x, y, title, ...)
+│   │
+│   ├── validation.py                     # validation command group
+│   │   └── create(file, range, type, formula1, formula2, ...)
+│   │
+│   ├── protection.py                     # protection command group
+│   │   ├── freeze(file, cell)           # Freeze panes
+│   │   ├── protect(file, sheet, password)
+│   │   └── unprotect(file, sheet, password)
+│   │
+│   ├── app.py                            # app command group
+│   │   ├── visible(file, visible)       # Show/hide Excel
+│   │   ├── calculate(file, mode)         # Force recalc
+│   │   ├── focus(file, sheet)           # Activate window
+│   │   ├── alert(file, message, buttons)# Show dialog
+│   │   ├── wait_idle(file, timeout)     # Wait for Excel idle
+│   │   └── screen_update(file, enable) # Enable/disable screen
+│   │
+│   ├── checkpoint.py                      # checkpoint command group
+│   │   ├── create(file, message)         # Create checkpoint
+│   │   ├── list(file, json)             # List checkpoints
+│   │   ├── restore(file, checkpoint_id) # Restore checkpoint
+│   │   └── delete(file, checkpoint_id)  # Delete checkpoint
+│   │
+│   ├── branch.py                          # branch command group
+│   │   ├── create(file, name)            # Create branch
+│   │   ├── list(file, json)             # List branches
+│   │   ├── checkout(file, name)          # Switch branch
+│   │   ├── merge(file, name)             # Merge branch
+│   │   └── delete(file, name)           # Delete branch
+│   │
+│   ├── watch.py                          # watch command group
+│   │   ├── start(file, commands)         # Start watching
+│   │   └── stop(file)                   # Stop watching
+│   │
+│   ├── sql.py                            # sql command group
+│   │   ├── query(query, to, db)          # Execute SQL query
+│   │   ├── push(query, db, to, format)  # Push to Excel
+│   │   ├── pull(file, range, db, table) # Pull from Excel
+│   │   └── connect(name, url)            # Register DB connection
+│   │
+│   └── semantic.py                       # semantic command group
+│       ├── create_index(file, engine, privacy_check)
+│       ├── query(file, query, coordinate)
+│       └── describe(file, range, schema_only, json)
+│
+└── utils/                                # Shared utilities
+    ├── __init__.py
+    ├── path.py                           # Path utilities
+    │   ├── resolve_path(path)             # → absolute path
+    │   ├── normalize_path(path)          # → / separators
+    │   └── is_absolute_path(path)        # → bool
+    │
+    ├── cell.py                           # Cell reference utilities
+    │   ├── parse_cell_ref(ref)           # "Data!A1" → CellRef
+    │   ├── cell_ref_to_row_col(ref)      # "A1" → (0, 0)
+    │   ├── row_col_to_cell_ref(row, col) # → "B2"
+    │   ├── range_to_coords(range_str)    # "A1:C3" → coords
+    │   └── expand_range(range_str)       # "A:*" → ["A1", "A2", ...]
+    │
+    └── types.py                          # Type coercion utilities
+        ├── infer_type(value)             # → "string" | "number" | "date" | "bool"
+        ├── coerce_to_type(value, type_)  # → typed value
+        ├── parse_date(value)             # → datetime | None
+        ├── parse_number(value)           # → float | None
+        └── EXCEL_DATE_FORMAT             # ISO → Excel serial
+```
+
+## Module Dependencies
+
+```
+__init__.py
+    └── app (typer.Typer)
+
+__main__.py
+    └── imports __init__.app
+
+result.py                    # No dependencies (types only)
+    └── Used by: core, engines, commands
+
+errors.py                    # No dependencies
+    └── Used by: core, engines, commands
+
+context.py
+    └── result.py (Maybe types)
+
+core.py
+    ├── result.py
+    ├── errors.py
+    ├── context.py
+    ├── utils/path.py
+    ├── utils/cell.py
+    ├── utils/types.py
+    └── engines/
+
+engines/
+    ├── base.py
+    │   └── errors.py
+    ├── xlwings.py
+    │   ├── base.py
+    │   └── errors.py
+    ├── openpyxl.py
+    │   ├── base.py
+    │   └── errors.py
+    └── duckdb.py
+        └── base.py
+
+commands/                    # Each command module
+    ├── core.py
+    ├── errors.py
+    ├── result.py
+    ├── context.py
+    └── engines/
+
+utils/
+    └── (no dependencies, pure functions)
 ```
 
 ## Testing Strategy

@@ -19,4 +19,6 @@ exclude = ["public*"]
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "ruff>=0.8.0",
+    "mypy>=1.0.0",
 ]

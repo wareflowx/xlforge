@@ -15,3 +15,8 @@ xlforge = "xlforge:app"
 where = ["."]
 include = ["xlforge*"]
 exclude = ["public*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

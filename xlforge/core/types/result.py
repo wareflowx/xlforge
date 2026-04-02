@@ -7,7 +7,7 @@ Rust's Result and Option types.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generic, TypeVar, Callable, Union
+from typing import TYPE_CHECKING, Generic, TypeVar, Callable, Union, cast, NoReturn
 
 if TYPE_CHECKING:
     from typing import TypeGuard
@@ -43,7 +43,7 @@ class Ok(Generic[T]):
         """Return the contained value or a default."""
         return self.value
 
-    def unwrap_err(self) -> E:
+    def unwrap_err(self) -> NoReturn:
         """Raise ValueError - Ok does not contain an error."""
         raise ValueError(f"Called unwrap_err on Ok({self.value!r})")
 
@@ -53,7 +53,7 @@ class Ok(Generic[T]):
 
     def map_err(self, fn: Callable[[E], F]) -> Result[T, F]:
         """Apply function to error (does nothing for Ok)."""
-        return Ok(self.value)
+        return cast(Result[T, F], self)
 
     def and_then(self, fn: Callable[[T], Result[U, E]]) -> Result[U, E]:
         """Chain a Result-returning function on the value."""
@@ -61,7 +61,7 @@ class Ok(Generic[T]):
 
     def or_else(self, fn: Callable[[E], Result[T, U]]) -> Result[T, U]:
         """Apply function to error (does nothing for Ok)."""
-        return Ok(self.value)
+        return cast(Result[T, U], self)
 
     def __repr__(self) -> str:
         return f"Ok({self.value!r})"
@@ -79,7 +79,7 @@ class Err(Generic[E]):
     def is_err(self) -> bool:
         return True
 
-    def unwrap(self) -> T:
+    def unwrap(self) -> NoReturn:
         """Raise ValueError - Err does not contain a value."""
         raise ValueError(f"Called unwrap on Err({self.error!r})")
 
@@ -93,7 +93,7 @@ class Err(Generic[E]):
 
     def map(self, fn: Callable[[T], U]) -> Result[U, E]:
         """Apply function to value (does nothing for Err)."""
-        return Err(self.error)
+        return cast(Result[U, E], self)
 
     def map_err(self, fn: Callable[[E], F]) -> Result[T, F]:
         """Transform the contained error with a function."""
@@ -101,7 +101,7 @@ class Err(Generic[E]):
 
     def and_then(self, fn: Callable[[T], Result[U, E]]) -> Result[U, E]:
         """Apply function to value (does nothing for Err)."""
-        return Err(self.error)
+        return cast(Result[U, E], self)
 
     def or_else(self, fn: Callable[[E], Result[T, U]]) -> Result[T, U]:
         """Chain a Result-returning function on the error."""
@@ -155,7 +155,7 @@ class Some(Generic[T]):
         """Return the contained value or a default."""
         return self.value
 
-    def unwrap_none(self) -> T:
+    def unwrap_none(self) -> NoReturn:
         """Raise ValueError - Some contains a value."""
         raise ValueError(f"Called unwrap_none on Some({self.value!r})")
 
@@ -201,7 +201,7 @@ class Nothing(Generic[T]):
 
     def unwrap_none(self) -> T:
         """Return the Nothing instance (for compatibility)."""
-        return self  # type: ignore[return-value]
+        return cast(T, self)
 
     def map(self, fn: Callable[[T], U]) -> Maybe[U]:
         """Apply function to value (does nothing for Nothing)."""

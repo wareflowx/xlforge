@@ -1,0 +1,17 @@
+[project]
+name = "xlforge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "typer",
+]
+
+[project.scripts]
+xlforge = "xlforge:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["xlforge*"]
+exclude = ["public*"]

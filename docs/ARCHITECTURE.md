@@ -142,41 +142,44 @@ class OpenpyxlEngine(Engine):
 xlforge/                                  # Package root
 │
 ├── __init__.py                           # CLI app entry point
-│   typer.Typer() instance named `app`    # Exports: app
+│   typer.Typer() instance named `app`  # Exports: app
 │
-├── __main__.py                           # Entry point for `python -m xlforge`
+├── __main__.py                          # Entry point for `python -m xlforge`
 │   from xlforge import app
 │   if __name__ == "__main__":
 │       app()
 │
-├── result.py                             # Functional error handling types
-│   ├── Ok[T], Err[E]                     # Result variants
-│   ├── Some[T], Nothing[T]                # Maybe variants
-│   └── is_ok(), is_err(), is_some()      # Type guards
+├── errors.py                            # Error codes and exceptions
+│   ├── class ErrorCode(IntEnum)         # All 127 error codes
+│   ├── class XlforgeError(Exception)     # Base exception with code + message
+│   └── ERROR_MESSAGES: dict[int, str]   # Code → human message mapping
 │
-├── errors.py                             # Error codes and exceptions
-│   ├── class ErrorCode(IntEnum)          # All 127 error codes
-│   ├── class XlforgeError(Exception)    # Base exception with code + message
-│   └── ERROR_MESSAGES: dict[int, str]    # Code → human message mapping
-│
-├── context.py                            # CLI context management
+├── context.py                           # CLI context management
 │   ├── class Context                    # Active file/sheet state
-│   ├── DEFAULT_CONTEXT: Context          # Global default context
-│   ├── get_context()                     # Get current context
-│   └── set_context(file, sheet)          # Set active context
+│   ├── DEFAULT_CONTEXT: Context         # Global default context
+│   ├── get_context()                    # Get current context
+│   └── set_context(file, sheet)         # Set active context
 │
-├── core.py                               # SDK: business logic layer
+├── core.py                              # SDK: business logic layer
 │   ├── cell_get(), cell_set()           # Cell operations
-│   ├── sheet_list(), sheet_create()      # Sheet operations
-│   ├── file_open(), file_save()          # File operations
+│   ├── sheet_list(), sheet_create()     # Sheet operations
+│   ├── file_open(), file_save()         # File operations
 │   ├── parse_cell_ref()                  # "Data!A1" → (sheet, coord)
-│   ├── resolve_path()                     # Relative → absolute path
+│   ├── resolve_path()                    # Relative → absolute path
 │   ├── coerce_value()                    # String → typed value
-│   └── get_engine()                      # Engine selection
+│   └── get_engine()                     # Engine selection
 │
-├── engines/                              # API: Excel interaction layer
-│   ├── __init__.py
-│   ├── base.py                           # Engine interface
+├── core/
+│   └── types/
+│       ├── __init__.py                   # Re-exports result types
+│       └── result.py                    # Result[T, E] and Maybe[T] types
+│           ├── Ok[T], Err[E]            # Result variants
+│           ├── Some[T], Nothing[T]       # Maybe variants
+│           └── is_ok(), is_err()        # Type guards
+│
+├── engines/                             # API: Excel interaction layer
+    ├── __init__.py
+    ├── base.py                          # Engine interface
 │   │   ├── class Engine(ABC)             # Abstract base class
 │   │   ├── class CellValue               # NamedTuple: value, type, formula
 │   │   └── METHOD_NOT_SUPPORTED          # Error code 9 helper
@@ -324,14 +327,14 @@ __init__.py
 __main__.py
     └── imports __init__.app
 
-result.py                    # No dependencies (types only)
+xlforge/core/types/result.py           # No dependencies (types only)
     └── Used by: core, engines, commands
 
-errors.py                    # No dependencies
+errors.py                              # No dependencies
     └── Used by: core, engines, commands
 
 context.py
-    └── result.py (Maybe types)
+    └── xlforge/core/types/result.py (Maybe types)
 
 core.py
     ├── result.py

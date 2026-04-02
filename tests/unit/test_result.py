@@ -2,8 +2,8 @@
 
 import pytest
 
-from xlforge.result import Ok, Err, Result, Some, Nothing, Maybe
-from xlforge.result import is_ok, is_err, is_some, is_nothing
+from xlforge.core.types.result import Ok, Err, Result, Some, Nothing, Maybe
+from xlforge.core.types.result import is_ok, is_err, is_some, is_nothing
 
 
 # =============================================================================

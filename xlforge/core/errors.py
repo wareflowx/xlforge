@@ -11,9 +11,14 @@ class ErrorCode(IntEnum):
     # Success
     SUCCESS = 0
 
-    # General errors
+    # General errors (1-15)
     GENERAL_ERROR = 1
     FILE_NOT_FOUND = 2
+    ENGINE_MISMATCH = 50
+    FILE_CORRUPTED = 51
+    CANNOT_KILL = 52
+    TEMPLATE_NOT_FOUND = 53
+    RECOVERY_FAILED = 54
     SHEET_NOT_FOUND = 3
     CELL_NOT_FOUND = 4
     INVALID_SYNTAX = 5
@@ -28,20 +33,20 @@ class ErrorCode(IntEnum):
     INVALID_CHART_TYPE = 14
     CHART_EXISTS = 15
 
-    # Checkpoint errors
+    # Checkpoint errors (20-24)
     CHECKPOINT_NOT_FOUND = 20
     CHECKPOINT_RESTORE_FAILED = 21
     BRANCH_NOT_FOUND = 22
     BRANCH_MERGE_CONFLICT = 23
     CANNOT_DELETE_ACTIVE_BRANCH = 24
 
-    # Column/Row errors
+    # Column/Row errors (30-33)
     COLUMN_NOT_FOUND = 30
     ROW_NOT_FOUND = 31
     INVALID_UNIT = 32
     COLUMN_ROW_HIDDEN = 33
 
-    # CSV errors
+    # CSV errors (40-45)
     CSV_NOT_FOUND = 40
     ENCODING_ERROR = 41
     CSV_TYPE_COERCION_FAILED = 42
@@ -49,14 +54,14 @@ class ErrorCode(IntEnum):
     SHEET_NOT_FOUND_DURING_EXPORT = 44
     INVALID_CSV_FORMAT = 45
 
-    # Style errors
+    # Style errors (60-64)
     INVALID_STYLE_STRING = 60
     INVALID_NUMBER_FORMAT = 61
     NAMED_STYLE_NOT_FOUND = 62
     CONDITIONAL_FORMAT_NOT_SUPPORTED = 63
     RANGE_TOO_COMPLEX_FOR_CONDITIONAL = 64
 
-    # Protection errors
+    # Protection errors (70-79)
     SHEET_PROTECTED = 70
     PASSWORD_REQUIRED = 71
     INVALID_PASSWORD = 72
@@ -68,7 +73,7 @@ class ErrorCode(IntEnum):
     CIRCULAR_SHEET_REFERENCE = 78
     CANNOT_MOVE_SHEET = 79
 
-    # Semantic/AI errors
+    # Semantic/AI errors (80-88)
     INDEX_NOT_FOUND = 80
     LLM_PROVIDER_ERROR = 81
     PRIVACY_CHECK_FAILED = 82
@@ -77,9 +82,9 @@ class ErrorCode(IntEnum):
     NO_ACTIVE_RECORDING = 85
     WATCHDOG_TIMEOUT = 86
     INVALID_RULE_SYNTAX = 87
-    SEMANTIC_TYPE_COERCION_FAILED = 88
+    TYPE_COERCION_FAILED_STRICT = 88
 
-    # Database errors
+    # Database errors (89-96)
     DATABASE_CONNECTION_FAILED = 89
     QUERY_TIMEOUT = 90
     FILE_IS_LOCKED = 91
@@ -88,9 +93,8 @@ class ErrorCode(IntEnum):
     EXTENSION_NOT_AVAILABLE = 94
     VIRTUAL_VIEW_CONNECTION_FAILED = 95
     PIVOT_REFRESH_FAILED = 96
-    TYPE_COERCION_FAILED_STRICT = 88  # Alias for strict mode
 
-    # Table errors
+    # Table errors (100-116)
     TABLE_NOT_FOUND = 100
     TABLE_ALREADY_EXISTS = 101
     INVALID_TABLE_NAME = 102
@@ -109,7 +113,7 @@ class ErrorCode(IntEnum):
     CIRCULAR_DEPENDENCY_IN_VALIDATION = 115
     VALIDATION_RANGE_TOO_LARGE = 116
 
-    # Watcher errors
+    # Watcher errors (120-127)
     WATCHER_ALREADY_ACTIVE = 120
     NO_ACTIVE_WATCHER = 121
     WATCHER_PID_NOT_FOUND = 122
@@ -126,6 +130,11 @@ ERROR_MESSAGES: dict[int, str] = {
     # General errors
     ErrorCode.GENERAL_ERROR: "General error",
     ErrorCode.FILE_NOT_FOUND: "File not found",
+    ErrorCode.ENGINE_MISMATCH: "Engine mismatch",
+    ErrorCode.FILE_CORRUPTED: "File corrupted",
+    ErrorCode.CANNOT_KILL: "Cannot kill (file in use)",
+    ErrorCode.TEMPLATE_NOT_FOUND: "Template not found",
+    ErrorCode.RECOVERY_FAILED: "Recovery failed",
     ErrorCode.SHEET_NOT_FOUND: "Sheet not found",
     ErrorCode.CELL_NOT_FOUND: "Cell not found",
     ErrorCode.INVALID_SYNTAX: "Invalid syntax",
@@ -153,7 +162,7 @@ ERROR_MESSAGES: dict[int, str] = {
     # CSV errors
     ErrorCode.CSV_NOT_FOUND: "CSV not found",
     ErrorCode.ENCODING_ERROR: "Encoding error",
-    ErrorCode.CSV_TYPE_COERCION_FAILED: "CSV type coercion failed",
+    ErrorCode.CSV_TYPE_COERCION_FAILED: "Type coercion failed",
     ErrorCode.HEADER_MISMATCH: "Header mismatch",
     ErrorCode.SHEET_NOT_FOUND_DURING_EXPORT: "Sheet not found during export",
     ErrorCode.INVALID_CSV_FORMAT: "Invalid CSV format",
@@ -183,6 +192,7 @@ ERROR_MESSAGES: dict[int, str] = {
     ErrorCode.NO_ACTIVE_RECORDING: "No active recording to stop",
     ErrorCode.WATCHDOG_TIMEOUT: "Watchdog timeout (Excel connection lost)",
     ErrorCode.INVALID_RULE_SYNTAX: "Invalid rule syntax for semantic-check",
+    ErrorCode.TYPE_COERCION_FAILED_STRICT: "Type coercion failed (use --strict for details)",
     # Database errors
     ErrorCode.DATABASE_CONNECTION_FAILED: "Database connection failed",
     ErrorCode.QUERY_TIMEOUT: "Query timeout",
@@ -261,24 +271,10 @@ class XlforgeError(Exception):
 
 
 def get_error_message(code: ErrorCode | int) -> str:
-    """Get the human-readable message for an error code.
-
-    Args:
-        code: The error code.
-
-    Returns:
-        The error message string.
-    """
+    """Get the human-readable message for an error code."""
     return ERROR_MESSAGES.get(int(code), "Unknown error")
 
 
 def is_success(code: ErrorCode | int) -> bool:
-    """Check if an error code represents success.
-
-    Args:
-        code: The error code to check.
-
-    Returns:
-        True if the code is SUCCESS (0).
-    """
+    """Check if an error code represents success."""
     return int(code) == ErrorCode.SUCCESS

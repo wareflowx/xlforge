@@ -12,6 +12,7 @@ Pure functions with no I/O or external dependencies.
 
 ```bash
 tests/unit/
+├── test_result.py            # Result[T, E] and Maybe[T] types
 ├── test_cell_parsing.py      # Parse "Sheet!A1" notation
 ├── test_type_coercion.py      # String → number, date, bool, formula
 ├── test_engine_selection.py    # Auto-detect xlwings vs openpyxl
@@ -273,6 +274,129 @@ def test_error_code_exists(code, description):
     from xlforge.errors import ErrorCode
     assert ErrorCode(code).name is not None
     assert ErrorCode(code).value == code
+```
+
+## Testing Result and Maybe Types
+
+See [Functional Patterns](../ARCHITECTURE.md#functional-patterns) for type definitions.
+
+### Testing Result[T, E]
+
+```python
+# tests/unit/test_result.py
+import pytest
+from xlforge.result import Ok, Err, is_ok, is_err
+
+def test_ok_unwrap():
+    result: Result[int, str] = Ok(42)
+    assert result.unwrap() == 42
+
+def test_err_unwrap_raises():
+    result = Err("oops")
+    with pytest.raises(ValueError):
+        result.unwrap()
+
+def test_map_transforms_ok():
+    result = Ok(42)
+    mapped = result.map(lambda x: x * 2)
+    assert mapped == Ok(84)
+
+def test_map_preserves_err():
+    result = Err("oops")
+    mapped = result.map(lambda x: x * 2)
+    assert mapped == Err("oops")
+
+def test_and_then_chains_ok():
+    def parse(x: int) -> Result[str, str]:
+        return Ok(f"value:{x}")
+
+    result = Ok(42).and_then(parse)
+    assert result == Ok("value:42")
+
+def test_and_then_preserves_err():
+    def parse(x: int) -> Result[str, str]:
+        return Ok(f"value:{x}")
+
+    result = Err("error").and_then(parse)
+    assert result == Err("error")
+```
+
+### Testing Maybe[T]
+
+```python
+# tests/unit/test_maybe.py
+import pytest
+from xlforge.result import Some, Nothing, is_some, is_nothing
+
+def test_some_unwrap():
+    maybe: Maybe[int] = Some(42)
+    assert maybe.unwrap() == 42
+
+def test_nothing_unwrap_raises():
+    maybe = Nothing()
+    with pytest.raises(ValueError):
+        maybe.unwrap()
+
+def test_map_transforms_some():
+    maybe = Some(42)
+    mapped = maybe.map(lambda x: x * 2)
+    assert mapped == Some(84)
+
+def test_map_preserves_nothing():
+    maybe = Nothing()
+    mapped = maybe.map(lambda x: x * 2)
+    assert mapped == Nothing()
+
+def test_filter_returns_some_when_match():
+    maybe = Some(42)
+    filtered = maybe.filter(lambda x: x > 10)
+    assert filtered == Some(42)
+
+def test_filter_returns_nothing_when_no_match():
+    maybe = Some(5)
+    filtered = maybe.filter(lambda x: x > 10)
+    assert filtered == Nothing()
+
+def test_and_then_chains_some():
+    def get_positive(x: int) -> Maybe[int]:
+        if x > 0:
+            return Some(x * 2)
+        return Nothing()
+
+    result = Some(21).and_then(get_positive)
+    assert result == Some(42)
+
+def test_and_then_preserves_nothing():
+    def get_positive(x: int) -> Maybe[int]:
+        if x > 0:
+            return Some(x * 2)
+        return Nothing()
+
+    result = Nothing().and_then(get_positive)
+    assert result == Nothing()
+```
+
+### Testing SDK Functions Returning Result
+
+```python
+# tests/unit/test_core.py
+from xlforge.result import Ok, Err
+
+def test_cell_get_returns_ok_on_success(sample_xlsx):
+    result = core.cell_get(str(sample_xlsx), "Data!A1")
+    assert is_ok(result)
+    assert result.value.cell == "Data!A1"
+    assert result.value.value == "Header"
+
+def test_cell_get_returns_err_on_file_not_found():
+    result = core.cell_get("nonexistent.xlsx", "Sheet1!A1")
+    assert is_err(result)
+    assert result.error == ErrorCode.FILE_NOT_FOUND
+
+def test_cell_get_returns_err_on_sheet_not_found(sample_xlsx):
+    result = core.cell_get(str(sample_xlsx), "NonExistent!A1")
+    assert is_err(result)
+    assert result.error == ErrorCode.SHEET_NOT_FOUND
 ```
 
 ## Performance Testing

@@ -144,6 +144,7 @@ xlforge/
 ├── __main__.py              # python -m xlforge entry
 ├── core.py                  # SDK: business logic
 ├── errors.py                # Error codes and exceptions
+├── result.py                # Result[T, E] and Maybe[T] types
 ├── context.py               # Context management (active file/sheet)
 ├── engines/
 │   ├── __init__.py
@@ -250,6 +251,98 @@ CLI Layer: catches, formats as JSON or user message
 ```
 
 Each layer adds context without losing the original error code.
+
+## Functional Patterns
+
+xlforge uses `Result[T, E]` and `Maybe[T]` types for explicit error handling instead of exceptions.
+
+### Result[T, E]
+
+Represents either a success (`Ok`) or a failure (`Err`).
+
+```python
+from xlforge.result import Result, Ok, Err, is_ok, is_err
+
+def cell_get(file: str, cell: str) -> Result[CellValue, ErrorCode]:
+    if not file_exists(file):
+        return Err(ErrorCode.FILE_NOT_FOUND)
+    if not sheet_exists(file, cell.sheet):
+        return Err(ErrorCode.SHEET_NOT_FOUND)
+
+    value = engine.get_cell(sheet, cell.coord)
+    return Ok(CellValue(value=value, type=infer_type(value)))
+```
+
+**Usage:**
+
+```python
+result = cell_get("report.xlsx", "Data!A1")
+
+if is_ok(result):
+    print(result.value)  # CellValue
+
+if is_err(result):
+    print(result.error)  # ErrorCode.FILE_NOT_FOUND
+
+# Chaining
+result.map(lambda v: v.upper()).unwrap_or("N/A")
+
+# Error propagation
+def process(file: str) -> Result[ProcessedData, ErrorCode]:
+    return cell_get(file, "A1").and_then(validate_value)
+```
+
+### Maybe[T]
+
+Represents an optional value (`Some`) or absence (`Nothing`).
+
+```python
+from xlforge.result import Maybe, Some, Nothing, is_some, is_nothing
+
+def find_config(key: str) -> Maybe[str]:
+    for k, v in CONFIG.items():
+        if k == key:
+            return Some(v)
+    return Nothing()
+```
+
+**Usage:**
+
+```python
+config = find_config("timeout")
+
+if is_some(config):
+    print(config.value)
+
+# With default
+timeout = find_config("timeout").unwrap_or(30)
+
+# Transform
+find_config("host").map(lambda h: f"{h}:{port}")
+```
+
+### Type Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Explicit** | Every error path is visible in the type signature |
+| **Composable** | `and_then`, `map` for chaining operations |
+| **Testable** | Easy to assert on `Ok` vs `Err` branches |
+| **No exceptions** | No `try/except` clutter in business logic |
+
+### Error Codes
+
+All errors use the documented error codes (0-127). See [Error Codes](../reference.md#error-codes).
+
+```python
+class ErrorCode(IntEnum):
+    SUCCESS = 0
+    GENERAL_ERROR = 1
+    FILE_NOT_FOUND = 2
+    SHEET_NOT_FOUND = 3
+    CELL_NOT_FOUND = 4
+    # ... (all 127 codes)
+```
 
 ## Why This Architecture?
 

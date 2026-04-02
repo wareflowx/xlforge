@@ -29,7 +29,7 @@ xlforge sql query "SELECT * FROM 'report.xlsx!Data'" --to output.csv
 
 xlforge follows a layered architecture: **API -> SDK -> CLI**
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Project Structure
 
@@ -129,7 +129,7 @@ xlforge --help
 | **SDK** | `xlforge/core.py` | Business logic, validation, orchestration |
 | **API** | `xlforge/engines/` | Excel interaction (xlwings, openpyxl, duckdb) |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full details.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for full details.
 
 ## Testing
 
@@ -139,7 +139,7 @@ xlforge uses a multi-layer testing approach:
 - **Integration tests** - CLI commands with mocked SDK
 - **E2E tests** - Real Excel/xlwings (requires Windows + Excel)
 
-See [docs/testing/README.md](docs/testing/README.md) for details.
+See [testing/README.md](testing/README.md) for details.
 
 ## Error Codes
 
@@ -155,7 +155,7 @@ xlforge returns specific exit codes for different errors:
 | 6 | File locked |
 | 9 | Feature unavailable (headless) |
 
-See [docs/reference.md](docs/reference.md) for all 127 error codes.
+See [reference.md](reference.md) for all 127 error codes.
 
 ## Commands
 
@@ -176,7 +176,7 @@ See [docs/reference.md](docs/reference.md) for all 127 error codes.
 | **Semantic** | index, query, describe |
 | **Watch** | start, stop |
 
-See [docs/commands/](docs/commands/) for detailed command documentation.
+See [commands/](commands/) for detailed command documentation.
 
 ## License
 

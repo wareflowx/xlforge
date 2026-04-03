@@ -148,3 +148,110 @@ def write(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+@cell_app.command()
+def formula(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    sheet: Annotated[str, typer.Argument(help="Sheet name.")],
+    coord: Annotated[str, typer.Argument(help="Cell coordinate (e.g., A1).")],
+    formula: Annotated[str, typer.Argument(help="Formula to set (e.g., =SUM(A:A)).")],
+) -> None:
+    """Set a formula in a cell."""
+    # Check if file exists
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    # Ensure formula starts with =
+    if not formula.startswith("="):
+        formula = f"={formula}"
+
+    try:
+        engine = EngineSelector.for_path(path)
+        workbook = Workbook(path=path, engine=engine, read_only=False)
+
+        with workbook:
+            # Check if sheet exists
+            if not engine.sheet_exists(path, sheet):
+                typer.secho(
+                    f"Error: Sheet not found: {sheet}",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
+
+            # Create CellValue with FORMULA type
+            cell_value = CellValue(raw=formula, type=ValueType.FORMULA)
+
+            # Write to cell
+            sheet_obj = workbook.sheet(name=sheet)
+            sheet_obj.set_cell(coord, cell_value)
+
+            # Save the workbook
+            workbook.save()
+
+            typer.echo(f"Formula set: {formula} at {coord}")
+
+    except XlforgeError:
+        raise
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
+@cell_app.command()
+def clear(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    sheet: Annotated[str, typer.Argument(help="Sheet name.")],
+    coord: Annotated[str, typer.Argument(help="Cell coordinate (e.g., A1).")],
+) -> None:
+    """Clear a cell value."""
+    # Check if file exists
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    try:
+        engine = EngineSelector.for_path(path)
+        workbook = Workbook(path=path, engine=engine, read_only=False)
+
+        with workbook:
+            # Check if sheet exists
+            if not engine.sheet_exists(path, sheet):
+                typer.secho(
+                    f"Error: Sheet not found: {sheet}",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
+
+            # Create empty CellValue
+            cell_value = CellValue(raw=None, type=ValueType.EMPTY)
+
+            # Clear the cell
+            sheet_obj = workbook.sheet(name=sheet)
+            sheet_obj.set_cell(coord, cell_value)
+
+            # Save the workbook
+            workbook.save()
+
+            typer.echo(f"Cleared cell {coord}")
+
+    except XlforgeError:
+        raise
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)

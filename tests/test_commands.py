@@ -2189,3 +2189,615 @@ class TestValidationList:
             assert "100" in result.output
             assert "A1:A10" in result.output
             assert "B1:B10" in result.output
+
+
+class TestChartCreate:
+    """Tests for xlforge chart create command."""
+
+    def test_chart_create_file_not_found(self):
+        """Test chart create with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
+
+            # When xlwings is not available, returns FEATURE_UNAVAILABLE
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower() or "excel" in result.output.lower()
+
+    def test_chart_create_xlwings_not_available(self):
+        """Test chart create returns error 9 when xlwings is not available."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
+
+            # Verify error 9 is returned when xlwings is not available
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "Feature unavailable" in result.output or "xlwings" in result.output.lower()
+
+    def test_chart_create_invalid_type_when_xlwings_available(self):
+        """Test chart create with invalid type returns error when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Category"
+            ws["A2"] = "A"
+            ws["A3"] = "B"
+            ws["B1"] = "Value"
+            ws["B2"] = 10
+            ws["B3"] = 20
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            # Mock xlwings availability to test actual chart functionality
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:B3", "--type", "invalid", "--name", "TestChart"])
+
+            assert result.exit_code == ErrorCode.INVALID_CHART_TYPE
+            assert "Invalid chart type" in result.output
+
+    def test_chart_create_invalid_range_when_xlwings_available(self):
+        """Test chart create with invalid range returns error when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "invalid-range", "--type", "column", "--name", "TestChart"])
+
+            assert result.exit_code == ErrorCode.INVALID_SYNTAX
+            assert "Invalid range format" in result.output
+
+    def test_chart_create_success_when_xlwings_available(self):
+        """Test successful chart creation when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Category"
+            ws["A2"] = "A"
+            ws["A3"] = "B"
+            ws["B1"] = "Value"
+            ws["B2"] = 10
+            ws["B3"] = 20
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:B3", "--type", "column", "--name", "TestChart"])
+
+            assert result.exit_code == 0
+            assert "Created chart" in result.output
+            assert "TestChart" in result.output
+
+            # Verify chart was actually created
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws._charts) == 1
+            # Chart was created successfully - verify by checking chart count increased
+            wb.close()
+
+
+class TestChartDelete:
+    """Tests for xlforge chart delete command."""
+
+    def test_chart_delete_file_not_found(self):
+        """Test chart delete with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+
+            # When xlwings is not available, returns FEATURE_UNAVAILABLE
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+    def test_chart_delete_xlwings_not_available(self):
+        """Test chart delete returns error 9 when xlwings is not available."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+    def test_chart_delete_not_found_when_xlwings_available(self):
+        """Test chart delete with non-existent chart returns error when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "NonExistentChart"])
+
+            assert result.exit_code == ErrorCode.CHART_NOT_FOUND
+            assert "Chart not found" in result.output
+
+    def test_chart_delete_success_when_xlwings_available(self):
+        """Test successful chart deletion when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+
+            # Add a chart first using openpyxl
+            from openpyxl.chart import BarChart, Reference
+            chart = BarChart()
+            chart.title = "TestChart"
+            data = Reference(ws, min_col=1, min_row=1, max_col=1, max_row=3)
+            chart.add_data(data)
+            ws.add_chart(chart, "D1")
+
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+
+            assert result.exit_code == 0
+            assert "Deleted chart" in result.output
+
+            # Verify chart was actually deleted
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws._charts) == 0
+            wb.close()
+
+
+class TestChartList:
+    """Tests for xlforge chart list command."""
+
+    def test_chart_list_file_not_found(self):
+        """Test chart list with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+    def test_chart_list_xlwings_not_available(self):
+        """Test chart list returns error 9 when xlwings is not available."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+    def test_chart_list_empty_when_xlwings_available(self):
+        """Test chart list with no charts returns proper message when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+                result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "No charts found" in result.output
+
+    def test_chart_list_with_charts_when_xlwings_available(self):
+        """Test chart list shows charts when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+
+            # Add charts using openpyxl
+            from openpyxl.chart import BarChart, LineChart, Reference
+            chart1 = BarChart()
+            chart1.title = "BarChart"
+            data = Reference(ws, min_col=1, min_row=1, max_col=1, max_row=3)
+            chart1.add_data(data)
+            ws.add_chart(chart1, "D1")
+
+            chart2 = LineChart()
+            chart2.title = "LineChart"
+            ws.add_chart(chart2, "H1")
+
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+                result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "BarChart" in result.output
+            assert "LineChart" in result.output
+            assert "Sheet1" in result.output
+
+
+class TestContextCommands:
+    """Tests for context commands."""
+
+    def test_context_show_empty(self):
+        """Test showing context when none is set."""
+        # First ensure context is cleared
+        runner.invoke(app, ["context", "clear"])
+        result = runner.invoke(app, ["context", "show"])
+
+        assert result.exit_code == 0
+        assert "No context is set" in result.output
+
+    def test_context_set_file_only(self):
+        """Test setting context with file only."""
+        result = runner.invoke(app, ["context", "set", "report.xlsx"])
+
+        assert result.exit_code == 0
+        assert "Context set" in result.output
+        assert "report.xlsx" in result.output
+
+    def test_context_set_with_sheet(self):
+        """Test setting context with file and sheet."""
+        result = runner.invoke(app, ["context", "set", "report.xlsx", "--sheet", "Data"])
+
+        assert result.exit_code == 0
+        assert "Context set" in result.output
+        assert "report.xlsx" in result.output
+        assert "Data" in result.output
+
+    def test_context_show_after_set(self):
+        """Test showing context after it has been set."""
+        # Set context first
+        runner.invoke(app, ["context", "set", "test.xlsx", "--sheet", "Sheet1"])
+
+        result = runner.invoke(app, ["context", "show"])
+
+        assert result.exit_code == 0
+        assert "test.xlsx" in result.output
+        assert "Sheet1" in result.output
+
+    def test_context_clear(self):
+        """Test clearing context."""
+        # First set context
+        runner.invoke(app, ["context", "set", "test.xlsx"])
+
+        # Then clear it
+        result = runner.invoke(app, ["context", "clear"])
+
+        assert result.exit_code == 0
+        assert "Context cleared" in result.output
+
+    def test_context_clear_when_empty(self):
+        """Test clearing context when none is set."""
+        # Ensure context is cleared first
+        runner.invoke(app, ["context", "clear"])
+
+        result = runner.invoke(app, ["context", "clear"])
+
+        assert result.exit_code == 0
+        assert "No context to clear" in result.output
+
+
+class TestFileCheck:
+    """Tests for xlforge file check command."""
+
+    def test_file_check_file_not_found(self):
+        """Test file check with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["file", "check", path])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_file_check_success(self):
+        """Test file check with valid file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["file", "check", path])
+
+            assert result.exit_code == 0
+            assert "Healthy: True" in result.output
+            assert "Valid xlsx: True" in result.output
+
+    def test_file_check_json_output(self):
+        """Test file check with JSON output."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["file", "check", path, "--json"])
+
+            assert result.exit_code == 0
+            assert '"exists": true' in result.output
+            assert '"valid_xlsx": true' in result.output
+            assert '"healthy": true' in result.output
+
+
+class TestFileRecover:
+    """Tests for xlforge file recover command."""
+
+    def test_file_recover_file_not_found(self):
+        """Test file recover with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["file", "recover", path])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_file_recover_success(self):
+        """Test file recover with valid file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["file", "recover", path])
+
+            assert result.exit_code == 0
+            assert "Recovered" in result.output
+
+
+class TestRowWidth:
+    """Tests for xlforge row width command."""
+
+    def test_row_width_file_not_found(self):
+        """Test row width with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["row", "width", path, "Sheet1", "1", "20"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_row_width_sheet_not_found(self):
+        """Test row width with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "width", path, "NonexistentSheet", "1", "20"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_row_width_invalid_row(self):
+        """Test row width with invalid row number returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "width", path, "Sheet", "0", "20"])
+
+            assert result.exit_code == ErrorCode.ROW_NOT_FOUND
+            assert "Invalid row" in result.output
+
+    def test_row_width_success(self):
+        """Test setting row width."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "width", path, "Sheet1", "1", "25.5"])
+
+            assert result.exit_code == 0
+            assert "Set row 1 height to 25.5" in result.output
+
+            # Verify row height
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].row_dimensions[1].height == 25.5
+            wb.close()
+
+
+class TestRowAuto:
+    """Tests for xlforge row auto command."""
+
+    def test_row_auto_file_not_found(self):
+        """Test row auto with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["row", "auto", path, "Sheet1", "1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_row_auto_sheet_not_found(self):
+        """Test row auto with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "auto", path, "NonexistentSheet", "1"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_row_auto_invalid_row(self):
+        """Test row auto with invalid row number returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "auto", path, "Sheet", "0"])
+
+            assert result.exit_code == ErrorCode.ROW_NOT_FOUND
+            assert "Invalid row" in result.output
+
+    def test_row_auto_success(self):
+        """Test auto-fitting row height."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws.row_dimensions[1].height = 50
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "auto", path, "Sheet1", "1"])
+
+            assert result.exit_code == 0
+            assert "Auto-fitted row 1" in result.output
+
+            # Verify row height is auto-fitted (None)
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].row_dimensions[1].height is None
+            wb.close()
+
+
+class TestColumnWidth:
+    """Tests for xlforge column width command."""
+
+    def test_column_width_file_not_found(self):
+        """Test column width with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["column", "width", path, "Sheet1", "A", "20"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_column_width_sheet_not_found(self):
+        """Test column width with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "width", path, "NonexistentSheet", "A", "20"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_column_width_success(self):
+        """Test setting column width."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "width", path, "Sheet1", "A", "15.5"])
+
+            assert result.exit_code == 0
+            assert "Set column A width to 15.5" in result.output
+
+            # Verify column width
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["A"].width == 15.5
+            wb.close()
+
+    def test_column_width_lowercase(self):
+        """Test setting column width with lowercase letter."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "width", path, "Sheet1", "b", "30"])
+
+            assert result.exit_code == 0
+            assert "Set column B width to 30" in result.output
+
+            # Verify column width
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["B"].width == 30
+            wb.close()
+
+
+class TestColumnAuto:
+    """Tests for xlforge column auto command."""
+
+    def test_column_auto_file_not_found(self):
+        """Test column auto with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["column", "auto", path, "Sheet1", "A"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_column_auto_sheet_not_found(self):
+        """Test column auto with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "auto", path, "NonexistentSheet", "A"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_column_auto_success(self):
+        """Test auto-fitting column width."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws.column_dimensions["A"].width = 50
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "auto", path, "Sheet1", "A"])
+
+            assert result.exit_code == 0
+            assert "Auto-fitted column A" in result.output
+
+            # Verify column width is auto-fitted (bestFit=True)
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["A"].bestFit is True
+            wb.close()
+
+    def test_column_auto_lowercase(self):
+        """Test auto-fitting column width with lowercase letter."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws.column_dimensions["B"].width = 40
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "auto", path, "Sheet1", "b"])
+
+            assert result.exit_code == 0
+            assert "Auto-fitted column B" in result.output
+
+            # Verify column width is auto-fitted (bestFit=True)
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["B"].bestFit is True
+            wb.close()

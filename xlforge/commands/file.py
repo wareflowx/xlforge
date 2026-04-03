@@ -185,3 +185,87 @@ def close(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+@file_app.command()
+def check(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    json_output: Annotated[
+        bool, typer.Option("--json", "-j", help="Output as JSON.")
+    ] = False,
+) -> None:
+    """Analyze file health and check for issues."""
+    import json
+
+    # Check if file exists
+    if not path.exists():
+        error_msg = f"Error: File does not exist: {path}"
+        if json_output:
+            typer.echo(json.dumps({
+                "path": str(path),
+                "exists": False,
+                "valid_xlsx": False,
+                "healthy": False,
+                "errors": [error_msg],
+            }, indent=2))
+        else:
+            typer.secho(error_msg, fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    errors = []
+    is_valid_xlsx = False
+    is_healthy = False
+
+    # Check if file is valid xlsx
+    try:
+        wb = openpyxl.load_workbook(path, data_only=True)
+        is_valid_xlsx = True
+        wb.close()
+    except Exception as e:
+        errors.append(f"Invalid xlsx: {e}")
+
+    # Overall health check
+    if path.exists() and is_valid_xlsx:
+        is_healthy = True
+
+    if json_output:
+        output = {
+            "path": str(path),
+            "exists": True,
+            "valid_xlsx": is_valid_xlsx,
+            "healthy": is_healthy,
+            "errors": errors if errors else None,
+        }
+        typer.echo(json.dumps(output, indent=2))
+    else:
+        typer.echo(f"Path: {path}")
+        typer.echo(f"Exists: {True}")
+        typer.echo(f"Valid xlsx: {is_valid_xlsx}")
+        typer.echo(f"Healthy: {is_healthy}")
+        if errors:
+            for error in errors:
+                typer.secho(f"  Error: {error}", fg=typer.colors.RED)
+
+
+@file_app.command()
+def recover(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+) -> None:
+    """Attempt to recover a file from corruption by re-opening and saving."""
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    try:
+        # Open and save to recover
+        wb = openpyxl.load_workbook(path)
+        wb.save(path)
+        wb.close()
+        typer.echo(f"Recovered: {path}")
+    except Exception as e:
+        typer.secho(f"Error: Recovery failed: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.RECOVERY_FAILED))

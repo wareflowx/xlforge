@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -183,3 +184,45 @@ def rename(
         raise typer.Exit(code=int(ErrorCode.GENERAL_ERROR))
     finally:
         workbook.close()
+
+
+@sheet_app.command()
+def list(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    json_output: Annotated[
+        bool, typer.Option("--json", "-j", help="Output as JSON.")
+    ] = False,
+) -> None:
+    """List all sheets in a workbook."""
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    try:
+        engine = EngineSelector.for_path(path)
+        workbook = Workbook(path=path, engine=engine, read_only=True)
+        workbook.open()
+
+        try:
+            sheet_names = engine.list_sheets(path)
+
+            if json_output:
+                data = {
+                    "path": str(path),
+                    "sheets": sheet_names,
+                }
+                typer.echo(json.dumps(data, indent=2))
+            else:
+                typer.echo(f"Path: {path}")
+                typer.echo(f"Sheets: {', '.join(sheet_names)}")
+        finally:
+            workbook.close()
+    except XlforgeError:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)

@@ -3011,6 +3011,224 @@ class TestTableDelete:
             wb.close()
 
 
+class TestPivotCreate:
+    """Tests for xlforge pivot create command."""
+
+    def test_pivot_create_xlwings_not_available(self):
+        """Test pivot create returns FEATURE_UNAVAILABLE when xlwings is not available."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(
+                app,
+                ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot"],
+            )
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower() or "headless" in result.output.lower()
+
+    def test_pivot_create_file_not_found_when_xlwings_available(self):
+        """Test pivot create with non-existent file returns error when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+                result = runner.invoke(
+                    app,
+                    ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot"],
+                )
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_pivot_create_sheet_not_found_when_xlwings_available(self):
+        """Test pivot create with non-existent sheet returns error when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+                result = runner.invoke(
+                    app,
+                    ["pivot", "create", path, "NonexistentSheet", "A1:D10", "--name", "TestPivot"],
+                )
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_pivot_create_invalid_range_when_xlwings_available(self):
+        """Test pivot create with invalid range format returns error when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+                result = runner.invoke(
+                    app,
+                    ["pivot", "create", path, "Sheet1", "invalid-range", "--name", "TestPivot"],
+                )
+
+            assert result.exit_code == ErrorCode.INVALID_SYNTAX
+            assert "Invalid source range format" in result.output
+
+    def test_pivot_create_invalid_aggregation_when_xlwings_available(self):
+        """Test pivot create with invalid aggregation format returns error when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+                result = runner.invoke(
+                    app,
+                    ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot", "--values", "INVALID:Field"],
+                )
+
+            assert result.exit_code == ErrorCode.INVALID_SYNTAX
+            assert "Invalid aggregation type" in result.output
+
+    def test_pivot_create_success_when_xlwings_available(self):
+        """Test creating a pivot table successfully when xlwings is mocked."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            # Add some data
+            ws["A1"] = "Region"
+            ws["B1"] = "Quarter"
+            ws["C1"] = "Revenue"
+            ws["D1"] = "Cost"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+                result = runner.invoke(
+                    app,
+                    [
+                        "pivot", "create", path, "Sheet1", "A1:D10",
+                        "--name", "SalesPivot",
+                        "--rows", "Region",
+                        "--columns", "Quarter",
+                        "--values", "SUM:Revenue",
+                        "--values", "SUM:Cost",
+                        "--filters", "Year",
+                    ],
+                )
+
+            # The command should succeed (though openpyxl has limited support)
+            assert result.exit_code == 0
+            assert "Created pivot table 'SalesPivot'" in result.output
+            assert "Source:" in result.output
+
+    def test_pivot_create_default_name_when_xlwings_available(self):
+        """Test creating a pivot table without specifying a name uses default naming."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+                result = runner.invoke(
+                    app,
+                    ["pivot", "create", path, "Sheet1", "A1:D10"],
+                )
+
+            assert result.exit_code == 0
+            assert "Created pivot table '" in result.output
+
+    def test_pivot_create_with_custom_sheet_when_xlwings_available(self):
+        """Test creating a pivot table on a custom target sheet."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Data"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            import unittest.mock as mock
+            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+                result = runner.invoke(
+                    app,
+                    ["pivot", "create", path, "Data", "A1:D10", "--sheet", "Dashboard", "--name", "SalesPivot"],
+                )
+
+            assert result.exit_code == 0
+            assert "Created pivot table 'SalesPivot'" in result.output
+            assert "Dashboard" in result.output
+
+
+class TestPivotList:
+    """Tests for xlforge pivot list command."""
+
+    def test_pivot_list_file_not_found(self):
+        """Test pivot list with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["pivot", "list", path])
+
+            # xlwings not available returns FEATURE_UNAVAILABLE
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+    def test_pivot_list_xlwings_not_available(self):
+        """Test pivot list when xlwings is not available."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["pivot", "list", path])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower() or "headless" in result.output.lower()
+
+
+class TestPivotDelete:
+    """Tests for xlforge pivot delete command."""
+
+    def test_pivot_delete_file_not_found(self):
+        """Test pivot delete with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+    def test_pivot_delete_xlwings_not_available(self):
+        """Test pivot delete when xlwings is not available."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+
 class TestProtectionProtect:
     """Tests for xlforge protection protect command."""
 
@@ -3668,3 +3886,364 @@ class TestCellFill:
             for col in ["A", "B", "C"]:
                 assert wb["Sheet1"][f"{col}1"].value == "Start"
             wb.close()
+
+
+class TestFormatConditionCommands:
+    """Tests for format-condition commands."""
+
+    def test_format_condition_add_file_not_found(self):
+        """Test format-condition add with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "data-bar"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_format_condition_add_sheet_not_found(self):
+        """Test format-condition add with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "NonExistentSheet", "A1:A10", "--type", "data-bar"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_format_condition_add_missing_type(self):
+        """Test format-condition add without --type returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10"])
+
+            assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
+            assert "--type is required" in result.output
+
+    def test_format_condition_add_invalid_type(self):
+        """Test format-condition add with invalid type returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "invalid"])
+
+            assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
+            assert "Invalid type" in result.output
+
+    def test_format_condition_add_color_scale_missing_min_max(self):
+        """Test format-condition add color-scale without --min and --max returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale"])
+
+            assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
+            assert "--min and --max colors are required" in result.output
+
+    def test_format_condition_add_color_scale_invalid_color(self):
+        """Test format-condition add color-scale with invalid color returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale", "--min", "invalid", "--max", "#00FF00"])
+
+            assert result.exit_code == ErrorCode.INVALID_STYLE_STRING
+            assert "Invalid min color" in result.output
+
+    def test_format_condition_add_icon_set_missing_icons(self):
+        """Test format-condition add icon-set without --icons returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "icon-set"])
+
+            assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
+            assert "--icons is required" in result.output
+
+    def test_format_condition_add_formula_missing_formula(self):
+        """Test format-condition add formula without --formula returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "formula"])
+
+            assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
+            assert "--formula is required" in result.output
+
+    def test_format_condition_add_data_bar_success(self):
+        """Test adding a data bar conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            # Add some values
+            ws["A1"] = 10
+            ws["A2"] = 20
+            ws["A3"] = 30
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "data-bar"])
+
+            assert result.exit_code == 0
+            assert "Added data bar conditional formatting" in result.output
+            assert "A1:A10" in result.output
+
+            # Verify conditional formatting was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.conditional_formatting._cf_rules) == 1
+            wb.close()
+
+    def test_format_condition_add_color_scale_success(self):
+        """Test adding a color scale conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = 10
+            ws["A2"] = 50
+            ws["A3"] = 100
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale", "--min", "#FF0000", "--max", "#00FF00"])
+
+            assert result.exit_code == 0
+            assert "Added color scale conditional formatting" in result.output
+            assert "A1:A10" in result.output
+
+            # Verify conditional formatting was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.conditional_formatting._cf_rules) == 1
+            wb.close()
+
+    def test_format_condition_add_color_scale_with_mid_success(self):
+        """Test adding a color scale conditional formatting with mid color."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale", "--min", "#FF0000", "--mid", "#FFFF00", "--max", "#00FF00"])
+
+            assert result.exit_code == 0
+            assert "Added color scale conditional formatting" in result.output
+
+    def test_format_condition_add_icon_set_success(self):
+        """Test adding an icon set conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "icon-set", "--icons", "3TrafficLights1"])
+
+            assert result.exit_code == 0
+            assert "Added icon set conditional formatting" in result.output
+            assert "3TrafficLights1" in result.output
+            assert "A1:A10" in result.output
+
+            # Verify conditional formatting was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.conditional_formatting._cf_rules) == 1
+            wb.close()
+
+    def test_format_condition_add_formula_success(self):
+        """Test adding a formula conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "formula", "--formula", "=A1>100"])
+
+            assert result.exit_code == 0
+            assert "Added formula conditional formatting" in result.output
+            assert "=A1>100" in result.output
+            assert "A1:A10" in result.output
+
+            # Verify conditional formatting was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.conditional_formatting._cf_rules) == 1
+            wb.close()
+
+    def test_format_condition_add_formula_with_style_success(self):
+        """Test adding a formula conditional formatting with style."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "formula", "--formula", "=A1>100", "--style", "bold text-#FF0000"])
+
+            assert result.exit_code == 0
+            assert "Added formula conditional formatting" in result.output
+            assert "bold text-#FF0000" in result.output
+
+    def test_format_condition_add_rule_missing_rule(self):
+        """Test format-condition add rule without --rule returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--value", "100"])
+
+            assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
+            assert "--rule is required" in result.output
+
+    def test_format_condition_add_rule_invalid_rule(self):
+        """Test format-condition add with invalid rule returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "invalid", "--value", "100"])
+
+            assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
+            assert "Invalid rule" in result.output
+
+    def test_format_condition_add_rule_missing_value(self):
+        """Test format-condition add rule without --value returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "greater-than"])
+
+            assert result.exit_code == ErrorCode.INVALID_FORMULA_SYNTAX
+            assert "--value is required" in result.output
+
+    def test_format_condition_add_rule_greater_than_success(self):
+        """Test adding a greater-than rule conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "greater-than", "--value", "100"])
+
+            assert result.exit_code == 0
+            assert "Added greater-than rule" in result.output
+            assert "100" in result.output
+            assert "A1:A10" in result.output
+
+            # Verify conditional formatting was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.conditional_formatting._cf_rules) == 1
+            wb.close()
+
+    def test_format_condition_add_rule_less_than_success(self):
+        """Test adding a less-than rule conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "less-than", "--value", "50"])
+
+            assert result.exit_code == 0
+            assert "Added less-than rule" in result.output
+
+    def test_format_condition_add_rule_between_success(self):
+        """Test adding a between rule conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "between", "--value", "10,100"])
+
+            assert result.exit_code == 0
+            assert "Added between rule" in result.output
+            assert "10,100" in result.output
+
+    def test_format_condition_add_rule_between_invalid_value(self):
+        """Test format-condition add between rule without comma-separated value returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet", "A1:A10", "--rule", "between", "--value", "100"])
+
+            assert result.exit_code == ErrorCode.INVALID_FORMULA_SYNTAX
+            assert "two values separated by comma" in result.output
+
+    def test_format_condition_add_rule_equal_success(self):
+        """Test adding an equal rule conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "equal", "--value", "PASS"])
+
+            assert result.exit_code == 0
+            assert "Added equal rule" in result.output
+
+    def test_format_condition_add_rule_contains_success(self):
+        """Test adding a contains rule conditional formatting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "contains", "--value", "ERROR"])
+
+            assert result.exit_code == 0
+            assert "Added contains rule" in result.output
+
+    def test_format_condition_add_rule_with_style_success(self):
+        """Test adding a rule conditional formatting with style."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "greater-than", "--value", "100", "--style", "bold"])
+
+            assert result.exit_code == 0
+            assert "Added greater-than rule" in result.output
+            assert "bold" in result.output

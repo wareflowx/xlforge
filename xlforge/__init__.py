@@ -5,7 +5,9 @@ from xlforge.commands.chart import chart_app
 from xlforge.commands.context import context_app
 from xlforge.commands.csv_cmd import csv_app
 from xlforge.commands.file import file_app
+from xlforge.commands.format_condition import format_condition_app
 from xlforge.commands.named_range import named_range_app
+from xlforge.commands.pivot import pivot_app
 from xlforge.commands.properties import properties_app
 from xlforge.commands.protection import protection_app
 from xlforge.commands.range import range_app
@@ -22,7 +24,9 @@ app.add_typer(col_app, name="column")
 app.add_typer(context_app, name="context")
 app.add_typer(csv_app, name="csv")
 app.add_typer(file_app, name="file")
+app.add_typer(format_condition_app, name="format-condition")
 app.add_typer(named_range_app, name="named-range")
+app.add_typer(pivot_app, name="pivot")
 app.add_typer(properties_app, name="properties")
 app.add_typer(protection_app, name="protection")
 app.add_typer(range_app, name="range")

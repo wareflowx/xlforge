@@ -166,3 +166,22 @@ class Engine(ABC):
             True if the cell exists in the used range.
         """
         raise NotImplementedError
+
+    def copy_sheet(self, path: Path, source_sheet: str, new_sheet: str) -> None:
+        """Copy a sheet to a new sheet.
+
+        Args:
+            path: Path to the workbook file.
+            source_sheet: Name of the sheet to copy.
+            new_sheet: Name for the new sheet.
+        """
+        raise NotImplementedError
+
+    def set_active_sheet(self, path: Path, sheet: str) -> None:
+        """Set the active/selected sheet.
+
+        Args:
+            path: Path to the workbook file.
+            sheet: Sheet name to make active.
+        """
+        raise NotImplementedError

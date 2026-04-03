@@ -168,3 +168,19 @@ class OpenpyxlEngine(Engine):
         if value.type == ValueType.EMPTY:
             return None
         return value.raw
+
+    def copy_sheet(self, path: Path, source_sheet: str, new_sheet: str) -> None:
+        """Copy a sheet to a new sheet."""
+        wb = self._workbooks.get(path)
+        if wb is None:
+            raise FileNotFoundError(f"Workbook not open: {path}")
+        source_ws = wb[source_sheet]
+        new_ws = wb.copy_worksheet(source_ws)
+        new_ws.title = new_sheet
+
+    def set_active_sheet(self, path: Path, sheet: str) -> None:
+        """Set the active/selected sheet."""
+        wb = self._workbooks.get(path)
+        if wb is None:
+            raise FileNotFoundError(f"Workbook not open: {path}")
+        wb.active = wb[sheet]

@@ -2801,3 +2801,870 @@ class TestColumnAuto:
             wb = openpyxl.load_workbook(path)
             assert wb["Sheet1"].column_dimensions["B"].bestFit is True
             wb.close()
+
+
+class TestTableCreate:
+    """Tests for xlforge table create command."""
+
+    def test_table_create_file_not_found(self):
+        """Test table create with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "MyTable"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_table_create_sheet_not_found(self):
+        """Test table create with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "create", path, "NonexistentSheet", "A1:C10", "--name", "MyTable"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_table_create_success(self):
+        """Test creating a table successfully."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            # Add some data to the range
+            ws["A1"] = "Header1"
+            ws["B1"] = "Header2"
+            ws["C1"] = "Header3"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "MyTable"])
+
+            assert result.exit_code == 0
+            assert "Created table 'MyTable'" in result.output
+
+            # Verify table was created
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert "MyTable" in ws.tables
+            assert ws.tables["MyTable"].ref == "A1:C10"
+            wb.close()
+
+    def test_table_create_already_exists(self):
+        """Test creating a table that already exists returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            from openpyxl.worksheet.table import Table
+            ws.add_table(Table(displayName="MyTable", ref="A1:C10"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "create", path, "Sheet1", "D1:F10", "--name", "MyTable"])
+
+            assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
+            assert "already exists" in result.output.lower()
+
+    def test_table_create_invalid_name(self):
+        """Test creating a table with invalid name returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "Invalid:Name"])
+
+            assert result.exit_code == ErrorCode.INVALID_TABLE_NAME
+            assert "Invalid table name" in result.output
+
+    def test_table_create_without_name(self):
+        """Test creating a table without specifying a name uses default naming."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "create", path, "Sheet1", "A1:C10"])
+
+            assert result.exit_code == 0
+            assert "Created table '" in result.output
+
+
+class TestTableList:
+    """Tests for xlforge table list command."""
+
+    def test_table_list_file_not_found(self):
+        """Test table list with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["table", "list", path])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_table_list_no_tables(self):
+        """Test table list when no tables exist."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "list", path])
+
+            assert result.exit_code == 0
+            assert "No tables found" in result.output
+
+    def test_table_list_success(self):
+        """Test listing tables successfully."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            from openpyxl.worksheet.table import Table
+            ws.add_table(Table(displayName="Table1", ref="A1:C10"))
+            ws.add_table(Table(displayName="Table2", ref="E1:G10"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "list", path])
+
+            assert result.exit_code == 0
+            assert "Table1" in result.output
+            assert "Table2" in result.output
+
+
+class TestTableDelete:
+    """Tests for xlforge table delete command."""
+
+    def test_table_delete_file_not_found(self):
+        """Test table delete with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["table", "delete", path, "MyTable"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_table_delete_not_found(self):
+        """Test deleting a non-existent table returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "delete", path, "NonExistentTable"])
+
+            assert result.exit_code == ErrorCode.TABLE_NOT_FOUND
+            assert "not found" in result.output.lower()
+
+    def test_table_delete_success(self):
+        """Test deleting a table successfully."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            from openpyxl.worksheet.table import Table
+            ws.add_table(Table(displayName="MyTable", ref="A1:C10"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "delete", path, "MyTable"])
+
+            assert result.exit_code == 0
+            assert "Deleted table 'MyTable'" in result.output
+
+            # Verify table was deleted
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert "MyTable" not in ws.tables
+            wb.close()
+
+    def test_table_delete_with_sheet_option(self):
+        """Test deleting a table with explicit sheet option."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws1 = wb.active
+            ws1.title = "Sheet1"
+            ws2 = wb.create_sheet("Sheet2")
+            from openpyxl.worksheet.table import Table
+            ws1.add_table(Table(displayName="Table1", ref="A1:C10"))
+            ws2.add_table(Table(displayName="Table2", ref="A1:C10"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["table", "delete", path, "Table1", "--sheet", "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "Deleted table 'Table1' from sheet 'Sheet1'" in result.output
+
+            # Verify table was deleted
+            wb = openpyxl.load_workbook(path)
+            assert "Table1" not in wb["Sheet1"].tables
+            assert "Table2" in wb["Sheet2"].tables
+            wb.close()
+
+
+class TestProtectionProtect:
+    """Tests for xlforge protection protect command."""
+
+    def test_protect_file_not_found(self):
+        """Test protect with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["protection", "protect", path, "Sheet1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_protect_sheet_not_found(self):
+        """Test protect with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "protect", path, "NonexistentSheet"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_protect_success(self):
+        """Test protecting a sheet."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "protect", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "Protected sheet 'Sheet1'" in result.output
+
+            # Verify sheet is protected
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].protection.sheet is True
+            wb.close()
+
+    def test_protect_with_password(self):
+        """Test protecting a sheet with password."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "protect", path, "Sheet1", "--password", "mypass"])
+
+            assert result.exit_code == 0
+            assert "Protected sheet 'Sheet1'" in result.output
+            assert "password" in result.output.lower()
+
+            # Verify sheet is protected with password (openpyxl hashes the password)
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].protection.sheet is True
+            assert wb["Sheet1"].protection.password is not None  # Password is hashed by openpyxl
+            wb.close()
+
+
+class TestProtectionUnprotect:
+    """Tests for xlforge protection unprotect command."""
+
+    def test_unprotect_file_not_found(self):
+        """Test unprotect with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["protection", "unprotect", path, "Sheet1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_unprotect_sheet_not_found(self):
+        """Test unprotect with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "unprotect", path, "NonexistentSheet"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_unprotect_success(self):
+        """Test unprotecting a sheet."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws.protection.sheet = True
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "unprotect", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "Unprotected sheet 'Sheet1'" in result.output
+
+            # Verify sheet is unprotected
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].protection.sheet is False
+            wb.close()
+
+
+class TestProtectionFreeze:
+    """Tests for xlforge protection freeze command."""
+
+    def test_freeze_file_not_found(self):
+        """Test freeze with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_freeze_sheet_not_found(self):
+        """Test freeze with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "freeze", path, "NonexistentSheet"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_freeze_default(self):
+        """Test freeze with default position (A2 - freeze first row)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "Freeze panes set to A2" in result.output
+
+            # Verify freeze panes
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].freeze_panes == "A2"
+            wb.close()
+
+    def test_freeze_with_column_and_row(self):
+        """Test freeze with specific column and row."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1", "--column", "B", "--row", "5"])
+
+            assert result.exit_code == 0
+            assert "Freeze panes set to B5" in result.output
+
+            # Verify freeze panes
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].freeze_panes == "B5"
+            wb.close()
+
+    def test_freeze_with_column_only(self):
+        """Test freeze with column only."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1", "--column", "C"])
+
+            assert result.exit_code == 0
+            assert "Freeze panes set to C1" in result.output
+
+            # Verify freeze panes
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].freeze_panes == "C1"
+            wb.close()
+
+    def test_freeze_with_row_only(self):
+        """Test freeze with row only."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1", "--row", "10"])
+
+            assert result.exit_code == 0
+            assert "Freeze panes set to A10" in result.output
+
+            # Verify freeze panes
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].freeze_panes == "A10"
+            wb.close()
+
+
+class TestSheetCopy:
+    """Tests for xlforge sheet copy command."""
+
+    def test_sheet_copy_file_not_found(self):
+        """Test sheet copy with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet1_Copy"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_sheet_copy_source_not_found(self):
+        """Test sheet copy with non-existent source sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.active.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["sheet", "copy", path, "NonexistentSheet", "Sheet1_Copy"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet 'NonexistentSheet' not found" in result.output
+
+    def test_sheet_copy_new_name_exists(self):
+        """Test sheet copy when new name already exists returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.active.title = "Sheet1"
+            wb.create_sheet("Sheet2")
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet2"])
+
+            assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
+            assert "Sheet 'Sheet2' already exists" in result.output
+
+    def test_sheet_copy_success(self):
+        """Test sheet copy successfully copies a sheet."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test Value"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet1_Copy"])
+
+            assert result.exit_code == 0
+            assert "Copied sheet 'Sheet1' to 'Sheet1_Copy'" in result.output
+
+            # Verify sheet was created
+            wb = openpyxl.load_workbook(path)
+            assert "Sheet1_Copy" in wb.sheetnames
+            assert wb["Sheet1_Copy"]["A1"].value == "Test Value"
+            wb.close()
+
+
+class TestSheetUse:
+    """Tests for xlforge sheet use command."""
+
+    def test_sheet_use_file_not_found(self):
+        """Test sheet use with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["sheet", "use", path, "Sheet1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_sheet_use_sheet_not_found(self):
+        """Test sheet use with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.active.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["sheet", "use", path, "NonexistentSheet"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet 'NonexistentSheet' not found" in result.output
+
+    def test_sheet_use_success(self):
+        """Test sheet use successfully sets active sheet."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.active.title = "Sheet1"
+            wb.create_sheet("Sheet2")
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["sheet", "use", path, "Sheet2"])
+
+            assert result.exit_code == 0
+            assert "Set active sheet to 'Sheet2'" in result.output
+
+            # Verify active sheet
+            wb = openpyxl.load_workbook(path)
+            assert wb.active.title == "Sheet2"
+            wb.close()
+
+
+class TestCellCopy:
+    """Tests for xlforge cell copy command."""
+
+    def test_cell_copy_file_not_found(self):
+        """Test cell copy with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "Sheet1", "B1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_cell_copy_src_sheet_not_found(self):
+        """Test cell copy with non-existent source sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "copy", path, "NonexistentSheet", "A1", "Sheet1", "B1"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Source sheet not found" in result.output
+
+    def test_cell_copy_dst_sheet_not_found(self):
+        """Test cell copy with non-existent destination sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.active.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "NonexistentSheet", "B1"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Destination sheet not found" in result.output
+
+    def test_cell_copy_success(self):
+        """Test cell copy successfully copies cell value."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Hello World"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "Sheet1", "B1"])
+
+            assert result.exit_code == 0
+            assert "Copied Sheet1!A1 (Hello World) to Sheet1!B1" in result.output
+
+            # Verify value was copied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["B1"].value == "Hello World"
+            wb.close()
+
+    def test_cell_copy_cross_sheet(self):
+        """Test cell copy from one sheet to another."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.active.title = "Sheet1"
+            wb.create_sheet("Sheet2")
+            ws1 = wb["Sheet1"]
+            ws1["A1"] = "Cross Sheet Copy"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "Sheet2", "C3"])
+
+            assert result.exit_code == 0
+            assert "Copied Sheet1!A1 (Cross Sheet Copy) to Sheet2!C3" in result.output
+
+            # Verify value was copied to different sheet
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet2"]["C3"].value == "Cross Sheet Copy"
+            wb.close()
+
+
+class TestCellSearch:
+    """Tests for xlforge cell search command."""
+
+    def test_cell_search_file_not_found(self):
+        """Test cell search with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["cell", "search", path, "test"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_cell_search_sheet_not_found(self):
+        """Test cell search with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "search", path, "test", "--sheet", "NonexistentSheet"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_cell_search_not_found(self):
+        """Test cell search when query not found returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Hello World"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "search", path, "NotFound"])
+
+            assert result.exit_code == ErrorCode.CELL_NOT_FOUND
+            assert "No cell found containing 'NotFound'" in result.output
+
+    def test_cell_search_success(self):
+        """Test cell search finds matching cell."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["B2"] = "Hello World"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "search", path, "Hello"])
+
+            assert result.exit_code == 0
+            assert "Found in Sheet1!B2: Hello World" in result.output
+
+    def test_cell_search_specific_sheet(self):
+        """Test cell search in specific sheet."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws1 = wb.active
+            ws1.title = "Sheet1"
+            ws1["A1"] = "Match in Sheet1"
+            wb.create_sheet("Sheet2")
+            ws2 = wb["Sheet2"]
+            ws2["A1"] = "Match in Sheet2"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "search", path, "Match in Sheet1", "--sheet", "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "Found in Sheet1!A1" in result.output
+
+    def test_cell_search_json_output(self):
+        """Test cell search with JSON output."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["C5"] = "Search Target"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "search", path, "Search", "--json"])
+
+            assert result.exit_code == 0
+            data = json.loads(result.output)
+            assert data["value"] == "Search Target"
+            assert data["coord"] == "C5"
+            assert data["sheet"] == "Sheet1"
+
+
+class TestCellBulk:
+    """Tests for xlforge cell bulk command."""
+
+    def test_cell_bulk_file_not_found(self):
+        """Test cell bulk with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3", "--set", "test"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_cell_bulk_sheet_not_found(self):
+        """Test cell bulk with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "bulk", path, "NonexistentSheet", "A1:C3", "--set", "test"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_cell_bulk_no_option(self):
+        """Test cell bulk without --set or --clear returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3"])
+
+            assert result.exit_code == 1
+            assert "Must specify either --set <value> or --clear" in result.output
+
+    def test_cell_bulk_set_value(self):
+        """Test cell bulk sets value in range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3", "--set", "Bulk"])
+
+            assert result.exit_code == 0
+            assert "Set A1:C3 = Bulk" in result.output
+
+            # Verify values were set
+            wb = openpyxl.load_workbook(path)
+            for row in range(1, 4):
+                for col in ["A", "B", "C"]:
+                    assert wb["Sheet1"][f"{col}{row}"].value == "Bulk"
+            wb.close()
+
+    def test_cell_bulk_clear(self):
+        """Test cell bulk clears range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Keep"
+            ws["A2"] = "Clear"
+            ws["A3"] = "Me"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A2", "--clear"])
+
+            assert result.exit_code == 0
+            assert "Cleared range A2" in result.output
+
+            # Verify cell was cleared
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].value == "Keep"
+            assert wb["Sheet1"]["A2"].value is None
+            assert wb["Sheet1"]["A3"].value == "Me"
+            wb.close()
+
+
+class TestCellFill:
+    """Tests for xlforge cell fill command."""
+
+    def test_cell_fill_file_not_found(self):
+        """Test cell fill with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["cell", "fill", path, "Sheet1", "A1:C3"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_cell_fill_sheet_not_found(self):
+        """Test cell fill with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "fill", path, "NonexistentSheet", "A1:C3"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_cell_fill_empty_range(self):
+        """Test cell fill with empty range returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "fill", path, "Sheet1", "A1:C3"])
+
+            assert result.exit_code == 1
+            assert "Range A1:C3 is empty" in result.output
+
+    def test_cell_fill_success(self):
+        """Test cell fill fills range with first cell value."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Fill Value"
+            ws["A2"] = "X"
+            ws["A3"] = "X"
+            ws["B1"] = "X"
+            ws["B2"] = "X"
+            ws["B3"] = "X"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "fill", path, "Sheet1", "A1:B3"])
+
+            assert result.exit_code == 0
+            assert "Filled range A1:B3 with value: Fill Value" in result.output
+
+            # Verify all cells were filled
+            wb = openpyxl.load_workbook(path)
+            for row in range(1, 4):
+                for col in ["A", "B"]:
+                    assert wb["Sheet1"][f"{col}{row}"].value == "Fill Value"
+            wb.close()
+
+    def test_cell_fill_horizontal(self):
+        """Test cell fill with horizontal range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Start"
+            ws["B1"] = "X"
+            ws["C1"] = "X"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["cell", "fill", path, "Sheet1", "A1:C1"])
+
+            assert result.exit_code == 0
+
+            # Verify all cells were filled
+            wb = openpyxl.load_workbook(path)
+            for col in ["A", "B", "C"]:
+                assert wb["Sheet1"][f"{col}1"].value == "Start"
+            wb.close()

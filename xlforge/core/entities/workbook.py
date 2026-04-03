@@ -154,3 +154,28 @@ class Workbook:
         if not self._is_open:
             raise RuntimeError("Workbook not open. Call open() first.")
         self._engine.save(self._path)
+
+    def copy_sheet(self, source_sheet: str, new_sheet: str) -> Sheet:
+        """Copy a sheet to a new sheet.
+
+        Args:
+            source_sheet: Name of the sheet to copy.
+            new_sheet: Name for the new sheet.
+
+        Returns:
+            New Sheet entity.
+        """
+        if not self._is_open:
+            raise RuntimeError("Workbook not open. Call open() first.")
+        self._engine.copy_sheet(self._path, source_sheet, new_sheet)
+        return self.sheet(new_sheet)
+
+    def set_active_sheet(self, sheet: str) -> None:
+        """Set the active/selected sheet.
+
+        Args:
+            sheet: Sheet name to make active.
+        """
+        if not self._is_open:
+            raise RuntimeError("Workbook not open. Call open() first.")
+        self._engine.set_active_sheet(self._path, sheet)

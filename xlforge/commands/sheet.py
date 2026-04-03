@@ -226,3 +226,103 @@ def list(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+@sheet_app.command()
+def copy(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    source_sheet: Annotated[str, typer.Argument(help="Source sheet name to copy.")],
+    new_sheet: Annotated[str, typer.Argument(help="Name for the new sheet.")],
+) -> None:
+    """Copy a sheet to a new sheet."""
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    engine = EngineSelector.for_path(path)
+
+    workbook = Workbook(path=path, engine=engine, read_only=False)
+    workbook.open()
+
+    try:
+        existing_sheets = workbook.sheets()
+
+        # Check if source sheet exists
+        if not any(s.name == source_sheet for s in existing_sheets):
+            typer.secho(
+                f"Error: Sheet '{source_sheet}' not found in {path}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
+
+        # Check if new sheet name already exists
+        if any(s.name == new_sheet for s in existing_sheets):
+            typer.secho(
+                f"Error: Sheet '{new_sheet}' already exists in {path}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.TABLE_ALREADY_EXISTS))
+
+        workbook.copy_sheet(source_sheet, new_sheet)
+        workbook.save()
+        typer.echo(f"Copied sheet '{source_sheet}' to '{new_sheet}' in {path}")
+    except XlforgeError:
+        raise
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.GENERAL_ERROR))
+    finally:
+        workbook.close()
+
+
+@sheet_app.command()
+def use(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    sheet: Annotated[str, typer.Argument(help="Sheet name to set as active.")],
+) -> None:
+    """Set the active/selected sheet."""
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    engine = EngineSelector.for_path(path)
+
+    workbook = Workbook(path=path, engine=engine, read_only=False)
+    workbook.open()
+
+    try:
+        existing_sheets = workbook.sheets()
+
+        # Check if sheet exists
+        if not any(s.name == sheet for s in existing_sheets):
+            typer.secho(
+                f"Error: Sheet '{sheet}' not found in {path}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
+
+        workbook.set_active_sheet(sheet)
+        workbook.save()
+        typer.echo(f"Set active sheet to '{sheet}' in {path}")
+    except XlforgeError:
+        raise
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.GENERAL_ERROR))
+    finally:
+        workbook.close()

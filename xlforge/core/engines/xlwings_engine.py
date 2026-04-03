@@ -248,3 +248,15 @@ class XlwingsEngine(Engine):
                     start_col <= cell_col + 1 <= start_col + end_col - 1)
         except Exception:
             return False
+
+    def copy_sheet(self, path: Path, source_sheet: str, new_sheet: str) -> None:
+        """Copy a sheet to a new sheet."""
+        wb = self._get_workbook(path)
+        source_ws = wb.sheets[source_sheet]
+        new_ws = source_ws.copy(after=source_ws)
+        new_ws.name = new_sheet
+
+    def set_active_sheet(self, path: Path, sheet: str) -> None:
+        """Set the active/selected sheet."""
+        wb = self._get_workbook(path)
+        wb.sheets[sheet].activate()

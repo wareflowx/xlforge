@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from functools import cached_property
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -26,7 +25,7 @@ class CellRef:
     sheet: str
     coord: str
 
-    @cached_property
+    @property
     def row(self) -> int:
         """Zero-based row index."""
         match = CELL_REF_PATTERN.match(self.coord)
@@ -34,7 +33,7 @@ class CellRef:
             raise ValueError(f"Invalid cell reference: {self.coord}")
         return int(match.group(2)) - 1
 
-    @cached_property
+    @property
     def col(self) -> int:
         """Zero-based column index (A=0)."""
         match = CELL_REF_PATTERN.match(self.coord)
@@ -43,12 +42,12 @@ class CellRef:
         col_letters = match.group(1).upper()
         return col_to_index(col_letters)
 
-    @cached_property
+    @property
     def is_range(self) -> bool:
         """Check if this is a range reference."""
         return ":" in self.coord
 
-    @cached_property
+    @property
     def end_row(self) -> int | None:
         """Zero-based end row for ranges, None for single cells."""
         if not self.is_range:
@@ -58,7 +57,7 @@ class CellRef:
             return int(match.group(4)) - 1
         return None
 
-    @cached_property
+    @property
     def end_col(self) -> int | None:
         """Zero-based end column for ranges, None for single cells."""
         if not self.is_range:

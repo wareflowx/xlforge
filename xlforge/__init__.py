@@ -1,9 +1,13 @@
 import typer
 
+from xlforge.commands.cell import cell_app
 from xlforge.commands.file import file_app
+from xlforge.commands.sheet import sheet_app
 
 app = typer.Typer()
+app.add_typer(cell_app, name="cell")
 app.add_typer(file_app, name="file")
+app.add_typer(sheet_app, name="sheet")
 
 
 @app.command()

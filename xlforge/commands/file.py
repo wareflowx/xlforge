@@ -5,10 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Optional
 
+import openpyxl
 import typer
 
 from xlforge.core.entities.workbook import Workbook
 from xlforge.core.engines.selector import EngineSelector
+from xlforge.core.errors import ErrorCode, XlforgeError
 
 file_app = typer.Typer(help="File operations for Excel workbooks.")
 
@@ -23,19 +25,48 @@ def open(
     read_only: Annotated[
         bool, typer.Option("--read-only", "-r", help="Open in read-only mode.")
     ] = False,
+    auto_create: Annotated[
+        bool,
+        typer.Option(
+            "--auto-create",
+            "-c",
+            help="Create a new workbook if the file doesn't exist.",
+        ),
+    ] = False,
 ) -> None:
     """Open a workbook file."""
-    if engine is not None:
-        engine_obj = EngineSelector.for_engine_name(engine)
-    else:
-        engine_obj = EngineSelector.for_path(path)
+    # Check if file exists
+    if not path.exists():
+        if auto_create:
+            # Create a new workbook with default sheet
+            wb = openpyxl.Workbook()
+            wb.save(path)
+            typer.echo(f"Created new workbook: {path}")
+        else:
+            typer.secho(
+                f"Error: File does not exist: {path}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
 
-    workbook = Workbook(path=path, engine=engine_obj, read_only=read_only)
-    workbook.open()
+    try:
+        if engine is not None:
+            engine_obj = EngineSelector.for_engine_name(engine)
+        else:
+            engine_obj = EngineSelector.for_path(path)
 
-    engine_name = engine_obj.__class__.__name__.replace("Engine", "").lower()
-    typer.echo(f"Opened: {path}")
-    typer.echo(f"Engine: {engine_name}")
+        workbook = Workbook(path=path, engine=engine_obj, read_only=read_only)
+        workbook.open()
+
+        engine_name = engine_obj.__class__.__name__.replace("Engine", "").lower()
+        typer.echo(f"Opened: {path}")
+        typer.echo(f"Engine: {engine_name}")
+    except XlforgeError:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
 
 
 @file_app.command()

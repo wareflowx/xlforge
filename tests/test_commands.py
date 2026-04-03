@@ -1182,3 +1182,1010 @@ class TestColumnUnhide:
             wb = openpyxl.load_workbook(path)
             assert wb["Sheet1"].column_dimensions["B"].hidden is False
             wb.close()
+
+
+class TestNamedRangeCreate:
+    """Tests for xlforge named-range create command."""
+
+    def test_named_range_create_file_not_found(self):
+        """Test named-range create with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["named-range", "create", path, "MyRange", "Sheet1", "A1:C10"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_named_range_create_sheet_not_found(self):
+        """Test named-range create with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "create", path, "MyRange", "NonExistentSheet", "A1:C10"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_named_range_create_success(self):
+        """Test creating a named range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Data"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "create", path, "SalesData", "Sheet1", "A1:C10"])
+
+            assert result.exit_code == 0
+            assert "Created named range 'SalesData'" in result.output
+            assert "Sheet1!A1:C10" in result.output
+
+            # Verify the named range was created
+            wb = openpyxl.load_workbook(path)
+            assert "SalesData" in wb.defined_names
+            assert wb.defined_names["SalesData"].attr_text == "Sheet1!A1:C10"
+            wb.close()
+
+    def test_named_range_create_already_exists(self):
+        """Test creating a named range that already exists returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            # Create a named range first
+            from openpyxl.workbook.defined_name import DefinedName
+            wb.defined_names.add(DefinedName("ExistingRange", attr_text="Sheet1!A1:B5"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "create", path, "ExistingRange", "Sheet1", "C1:D10"])
+
+            assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
+            assert "already exists" in result.output.lower()
+
+
+class TestNamedRangeDelete:
+    """Tests for xlforge named-range delete command."""
+
+    def test_named_range_delete_file_not_found(self):
+        """Test named-range delete with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["named-range", "delete", path, "MyRange"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_named_range_delete_not_found(self):
+        """Test deleting a non-existent named range returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "delete", path, "NonExistentRange"])
+
+            assert result.exit_code == ErrorCode.TABLE_NOT_FOUND
+            assert "not found" in result.output.lower()
+
+    def test_named_range_delete_success(self):
+        """Test deleting a named range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            # Create a named range first
+            from openpyxl.workbook.defined_name import DefinedName
+            wb.defined_names.add(DefinedName("ToDelete", attr_text="Sheet1!A1:B5"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "delete", path, "ToDelete"])
+
+            assert result.exit_code == 0
+            assert "Deleted named range 'ToDelete'" in result.output
+
+            # Verify the named range was deleted
+            wb = openpyxl.load_workbook(path)
+            assert "ToDelete" not in wb.defined_names
+            wb.close()
+
+
+class TestNamedRangeList:
+    """Tests for xlforge named-range list command."""
+
+    def test_named_range_list_file_not_found(self):
+        """Test named-range list with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["named-range", "list", path])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_named_range_list_empty(self):
+        """Test listing named ranges when none exist."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "list", path])
+
+            assert result.exit_code == 0
+            assert "No named ranges" in result.output
+
+    def test_named_range_list_success(self):
+        """Test listing named ranges."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            # Create named ranges
+            from openpyxl.workbook.defined_name import DefinedName
+            wb.defined_names.add(DefinedName("Range1", attr_text="Sheet1!A1:A10"))
+            wb.defined_names.add(DefinedName("Range2", attr_text="Sheet1!B1:B10"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "list", path])
+
+            assert result.exit_code == 0
+            assert "Range1" in result.output
+            assert "Sheet1!A1:A10" in result.output
+            assert "Range2" in result.output
+            assert "Sheet1!B1:B10" in result.output
+
+
+class TestNamedRangeGet:
+    """Tests for xlforge named-range get command."""
+
+    def test_named_range_get_file_not_found(self):
+        """Test named-range get with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["named-range", "get", path, "MyRange"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_named_range_get_not_found(self):
+        """Test getting a non-existent named range returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "get", path, "NonExistentRange"])
+
+            assert result.exit_code == ErrorCode.TABLE_NOT_FOUND
+            assert "not found" in result.output.lower()
+
+    def test_named_range_get_success(self):
+        """Test getting a named range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            # Create a named range
+            from openpyxl.workbook.defined_name import DefinedName
+            wb.defined_names.add(DefinedName("MyRange", attr_text="Sheet1!A1:C100"))
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["named-range", "get", path, "MyRange"])
+
+            assert result.exit_code == 0
+            assert "MyRange = Sheet1!A1:C100" in result.output
+
+
+class TestStyleSet:
+    """Tests for xlforge style set command."""
+
+    def test_style_set_file_not_found(self):
+        """Test style set with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--bold"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_style_set_sheet_not_found(self):
+        """Test style set with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "NonexistentSheet", "A1", "--bold"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_style_set_invalid_color(self):
+        """Test style set with invalid color format returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "Sheet", "A1", "--color", "invalid"])
+
+            assert result.exit_code == ErrorCode.INVALID_STYLE_STRING
+            assert "Invalid color" in result.output
+
+    def test_style_set_bold(self):
+        """Test setting cell bold style."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--bold"])
+
+            assert result.exit_code == 0
+            assert "bold" in result.output
+
+            # Verify style was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].font.bold is True
+            wb.close()
+
+    def test_style_set_italic(self):
+        """Test setting cell italic style."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--italic"])
+
+            assert result.exit_code == 0
+            assert "italic" in result.output
+
+            # Verify style was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].font.italic is True
+            wb.close()
+
+    def test_style_set_color(self):
+        """Test setting cell font color."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--color", "FF0000"])
+
+            assert result.exit_code == 0
+            assert "color" in result.output.lower()
+
+            # Verify style was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].font.color.rgb == "FFFF0000"  # ARGB format
+            wb.close()
+
+    def test_style_set_color_with_hash(self):
+        """Test setting cell font color with # prefix."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--color", "#00FF00"])
+
+            assert result.exit_code == 0
+
+            # Verify style was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].font.color.rgb == "FF00FF00"  # ARGB format
+            wb.close()
+
+    def test_style_set_multiple(self):
+        """Test setting multiple styles at once."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "style", "set", path, "Sheet1", "A1", "--bold", "--italic", "--color", "0000FF"
+            ])
+
+            assert result.exit_code == 0
+            assert "bold" in result.output
+            assert "italic" in result.output
+            assert "color" in result.output.lower()
+
+            # Verify all styles were applied
+            wb = openpyxl.load_workbook(path)
+            cell = wb["Sheet1"]["A1"]
+            assert cell.font.bold is True
+            assert cell.font.italic is True
+            assert cell.font.color.rgb == "FF0000FF"  # ARGB format
+            wb.close()
+
+    def test_style_set_no_options(self):
+        """Test style set with no style options shows message."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1"])
+
+            assert result.exit_code == 0
+            assert "No style changes" in result.output
+
+
+class TestStyleNumberFormat:
+    """Tests for xlforge style number-format command."""
+
+    def test_style_number_format_file_not_found(self):
+        """Test style number-format with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["style", "number-format", path, "Sheet1", "A1", "0.00"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_style_number_format_sheet_not_found(self):
+        """Test style number-format with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "number-format", path, "NonexistentSheet", "A1", "0.00"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_style_number_format_success(self):
+        """Test setting number format on a cell."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = 42.5
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "number-format", path, "Sheet1", "A1", "0.00"])
+
+            assert result.exit_code == 0
+            assert "number format" in result.output.lower()
+            assert "0.00" in result.output
+
+            # Verify format was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].number_format == "0.00"
+            wb.close()
+
+    def test_style_number_format_currency(self):
+        """Test setting currency number format."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["B2"] = 1234.56
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "number-format", path, "Sheet1", "B2", "$#,##0.00"])
+
+            assert result.exit_code == 0
+
+            # Verify format was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["B2"].number_format == "$#,##0.00"
+            wb.close()
+
+
+class TestStyleFont:
+    """Tests for xlforge style font command."""
+
+    def test_style_font_file_not_found(self):
+        """Test style font with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--name", "Arial"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_style_font_sheet_not_found(self):
+        """Test style font with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "font", path, "NonexistentSheet", "A1", "--name", "Arial"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_style_font_no_options(self):
+        """Test style font with no options returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "font", path, "Sheet", "A1"])
+
+            assert result.exit_code == 1
+            assert "Must specify at least one" in result.output
+
+    def test_style_font_name(self):
+        """Test setting font name."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--name", "Arial"])
+
+            assert result.exit_code == 0
+            assert "name" in result.output.lower()
+            assert "Arial" in result.output
+
+            # Verify font name was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].font.name == "Arial"
+            wb.close()
+
+    def test_style_font_size(self):
+        """Test setting font size."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--size", "14"])
+
+            assert result.exit_code == 0
+            assert "size" in result.output.lower()
+            assert "14" in result.output
+
+            # Verify font size was applied
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"]["A1"].font.size == 14
+            wb.close()
+
+    def test_style_font_name_and_size(self):
+        """Test setting font name and size together."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Test"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--name", "Calibri", "--size", "12"])
+
+            assert result.exit_code == 0
+            assert "name" in result.output.lower()
+            assert "size" in result.output.lower()
+
+            # Verify both were applied
+            wb = openpyxl.load_workbook(path)
+            cell = wb["Sheet1"]["A1"]
+            assert cell.font.name == "Calibri"
+            assert cell.font.size == 12
+            wb.close()
+
+
+class TestPropertiesGet:
+    """Tests for xlforge properties get command."""
+
+    def test_properties_get_file_not_found(self):
+        """Test properties get with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["properties", "get", path])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_properties_get_empty_workbook(self):
+        """Test getting properties from a new workbook."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "get", path])
+
+            assert result.exit_code == 0
+            assert "Workbook Properties:" in result.output
+            # openpyxl sets default creator='openpyxl' so properties will be shown
+
+    def test_properties_get_with_values(self):
+        """Test getting properties that are set."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.properties.title = "Test Document"
+            wb.properties.creator = "John Doe"
+            wb.properties.subject = "Test Subject"
+            wb.properties.keywords = "test, keywords"
+            wb.properties.description = "Test comments"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "get", path])
+
+            assert result.exit_code == 0
+            assert "Test Document" in result.output
+            assert "John Doe" in result.output
+            assert "Test Subject" in result.output
+            assert "test, keywords" in result.output
+            assert "Test comments" in result.output
+
+    def test_properties_get_json_output(self):
+        """Test getting properties with JSON output."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.properties.title = "JSON Test"
+            wb.properties.creator = "Jane Doe"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "get", path, "--json"])
+
+            assert result.exit_code == 0
+            data = json.loads(result.output)
+            assert data["title"] == "JSON Test"
+            assert data["author"] == "Jane Doe"
+
+
+class TestPropertiesSet:
+    """Tests for xlforge properties set command."""
+
+    def test_properties_set_file_not_found(self):
+        """Test properties set with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["properties", "set", path, "--title", "Test"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_properties_set_no_properties(self):
+        """Test properties set with no properties provided returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "set", path])
+
+            assert result.exit_code == 1
+            assert "Must provide at least one property" in result.output
+
+    def test_properties_set_title(self):
+        """Test setting the title property."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "set", path, "--title", "My Title"])
+
+            assert result.exit_code == 0
+            assert "title='My Title'" in result.output
+
+            # Verify the property was set
+            wb = openpyxl.load_workbook(path)
+            assert wb.properties.title == "My Title"
+            wb.close()
+
+    def test_properties_set_author(self):
+        """Test setting the author property."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "set", path, "--author", "John Doe"])
+
+            assert result.exit_code == 0
+            assert "author='John Doe'" in result.output
+
+            # Verify the property was set
+            wb = openpyxl.load_workbook(path)
+            assert wb.properties.creator == "John Doe"
+            wb.close()
+
+    def test_properties_set_subject(self):
+        """Test setting the subject property."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "set", path, "--subject", "Test Subject"])
+
+            assert result.exit_code == 0
+            assert "subject='Test Subject'" in result.output
+
+            # Verify the property was set
+            wb = openpyxl.load_workbook(path)
+            assert wb.properties.subject == "Test Subject"
+            wb.close()
+
+    def test_properties_set_keywords(self):
+        """Test setting the keywords property."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "set", path, "--keywords", "test, keywords"])
+
+            assert result.exit_code == 0
+            assert "keywords='test, keywords'" in result.output
+
+            # Verify the property was set
+            wb = openpyxl.load_workbook(path)
+            assert wb.properties.keywords == "test, keywords"
+            wb.close()
+
+    def test_properties_set_comments(self):
+        """Test setting the comments property."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["properties", "set", path, "--comments", "Test comments"])
+
+            assert result.exit_code == 0
+            assert "comments='Test comments'" in result.output
+
+            # Verify the property was set
+            wb = openpyxl.load_workbook(path)
+            assert wb.properties.description == "Test comments"
+            wb.close()
+
+    def test_properties_set_multiple(self):
+        """Test setting multiple properties at once."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "properties", "set", path,
+                "--title", "Multi Title",
+                "--author", "Multi Author",
+                "--subject", "Multi Subject"
+            ])
+
+            assert result.exit_code == 0
+            assert "title='Multi Title'" in result.output
+            assert "author='Multi Author'" in result.output
+            assert "subject='Multi Subject'" in result.output
+
+            # Verify all properties were set
+            wb = openpyxl.load_workbook(path)
+            assert wb.properties.title == "Multi Title"
+            assert wb.properties.creator == "Multi Author"
+            assert wb.properties.subject == "Multi Subject"
+            wb.close()
+
+    def test_properties_set_preserves_existing(self):
+        """Test setting one property preserves others."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.properties.title = "Original Title"
+            wb.properties.creator = "Original Author"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "properties", "set", path,
+                "--subject", "New Subject"
+            ])
+
+            assert result.exit_code == 0
+
+            # Verify all properties
+            wb = openpyxl.load_workbook(path)
+            assert wb.properties.title == "Original Title"
+            assert wb.properties.creator == "Original Author"
+            assert wb.properties.subject == "New Subject"
+            wb.close()
+
+
+class TestValidationAdd:
+    """Tests for xlforge validation add command."""
+
+    def test_validation_add_file_not_found(self):
+        """Test validation add with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "A1:A10", "--type", "list", "--formula1", "A,B,C"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_validation_add_sheet_not_found(self):
+        """Test validation add with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "add", path, "NonExistentSheet", "A1:A10", "--type", "list", "--formula1", "A,B,C"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_validation_add_invalid_type(self):
+        """Test validation add with invalid type returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "add", path, "Sheet", "A1:A10", "--type", "invalid", "--formula1", "A,B,C"])
+
+            assert result.exit_code == ErrorCode.VALIDATION_TYPE_NOT_SUPPORTED
+            assert "Invalid validation type" in result.output
+
+    def test_validation_add_missing_formula1(self):
+        """Test validation add without formula1 returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "add", path, "Sheet", "A1:A10", "--type", "list"])
+
+            assert result.exit_code == ErrorCode.INVALID_FORMULA_SYNTAX
+            assert "--formula1 is required" in result.output
+
+    def test_validation_add_list_success(self):
+        """Test adding a list (dropdown) validation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "A1:A10", "--type", "list", "--formula1", "Option1,Option2,Option3"])
+
+            assert result.exit_code == 0
+            assert "Added list validation" in result.output
+            assert "A1:A10" in result.output
+
+            # Verify validation was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.data_validations.dataValidation) == 1
+            dv = ws.data_validations.dataValidation[0]
+            assert dv.type == "list"
+            assert dv.formula1 == "Option1,Option2,Option3"
+            wb.close()
+
+    def test_validation_add_whole_success(self):
+        """Test adding a whole number validation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "B1:B10", "--type", "whole", "--formula1", "0", "--formula2", "100"])
+
+            assert result.exit_code == 0
+            assert "Added whole validation" in result.output
+            assert "B1:B10" in result.output
+            assert "Formula1: 0" in result.output
+            assert "Formula2: 100" in result.output
+
+            # Verify validation was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.data_validations.dataValidation) == 1
+            dv = ws.data_validations.dataValidation[0]
+            assert dv.type == "whole"
+            assert dv.formula1 == "0"
+            assert dv.formula2 == "100"
+            wb.close()
+
+    def test_validation_add_decimal_success(self):
+        """Test adding a decimal validation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "C1:C5", "--type", "decimal", "--formula1", "0.0", "--formula2", "99.99"])
+
+            assert result.exit_code == 0
+            assert "Added decimal validation" in result.output
+
+            # Verify validation was added
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.data_validations.dataValidation) == 1
+            dv = ws.data_validations.dataValidation[0]
+            assert dv.type == "decimal"
+            wb.close()
+
+
+class TestValidationRemove:
+    """Tests for xlforge validation remove command."""
+
+    def test_validation_remove_file_not_found(self):
+        """Test validation remove with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["validation", "remove", path, "Sheet1", "A1:A10"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_validation_remove_sheet_not_found(self):
+        """Test validation remove with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "remove", path, "NonExistentSheet", "A1:A10"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_validation_remove_not_found(self):
+        """Test validation remove when no validation exists returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "remove", path, "Sheet1", "A1:A10"])
+
+            assert result.exit_code == ErrorCode.VALIDATION_TYPE_NOT_SUPPORTED
+            assert "No data validation found" in result.output
+
+    def test_validation_remove_success(self):
+        """Test removing a validation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+
+            # Add a validation first
+            from openpyxl.worksheet.datavalidation import DataValidation
+            dv = DataValidation(type="list", formula1="A,B,C", allow_blank=True)
+            dv.add("A1:A10")
+            ws.add_data_validation(dv)
+
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "remove", path, "Sheet1", "A1:A10"])
+
+            assert result.exit_code == 0
+            assert "Removed data validation" in result.output
+
+            # Verify validation was removed
+            wb = openpyxl.load_workbook(path)
+            ws = wb["Sheet1"]
+            assert len(ws.data_validations.dataValidation) == 0
+            wb.close()
+
+
+class TestValidationList:
+    """Tests for xlforge validation list command."""
+
+    def test_validation_list_file_not_found(self):
+        """Test validation list with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["validation", "list", path, "Sheet1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_validation_list_sheet_not_found(self):
+        """Test validation list with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "list", path, "NonExistentSheet"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_validation_list_empty(self):
+        """Test listing validations when none exist."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "list", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "No data validations found" in result.output
+
+    def test_validation_list_success(self):
+        """Test listing validations."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+
+            # Add validations
+            from openpyxl.worksheet.datavalidation import DataValidation
+            dv1 = DataValidation(type="list", formula1="A,B,C", allow_blank=True)
+            dv1.add("A1:A10")
+            ws.add_data_validation(dv1)
+
+            dv2 = DataValidation(type="whole", formula1="0", formula2="100", allow_blank=True)
+            dv2.add("B1:B10")
+            ws.add_data_validation(dv2)
+
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["validation", "list", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "Sheet1" in result.output
+            assert "list" in result.output
+            assert "whole" in result.output
+            assert "A,B,C" in result.output
+            assert "0" in result.output
+            assert "100" in result.output
+            assert "A1:A10" in result.output
+            assert "B1:B10" in result.output

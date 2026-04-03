@@ -138,7 +138,7 @@ class OpenpyxlEngine(Engine):
             # openpyxl can access the cell directly
             ws[coord]
             return True
-        except KeyError, AttributeError:
+        except (KeyError, AttributeError):
             return False
 
     def _cell_to_value(self, cell: openpyxl.cell.cell.Cell) -> CellValue:

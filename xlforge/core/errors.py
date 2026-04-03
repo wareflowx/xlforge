@@ -11,6 +11,19 @@ class ErrorCode(IntEnum):
     # Success
     SUCCESS = 0
 
+    # Reserved for future use (currently unused):
+    # 50-54: General errors (ENGINE_MISMATCH, FILE_CORRUPTED, CANNOT_KILL, TEMPLATE_NOT_FOUND, RECOVERY_FAILED)
+    # 55-59: Reserved
+    # 60-64: Style errors
+    # 65-69: Reserved
+    # 70-79: Protection errors
+    # 80-88: Semantic/AI errors
+    # 89-96: Database errors
+    # 97-99: Reserved
+    # 100-116: Table errors
+    # 117-119: Reserved
+    # 120-127: Watcher errors
+
     # General errors (1-15)
     GENERAL_ERROR = 1
     FILE_NOT_FOUND = 2

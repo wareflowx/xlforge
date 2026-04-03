@@ -3,18 +3,26 @@ import typer
 from xlforge.commands.cell import cell_app
 from xlforge.commands.csv_cmd import csv_app
 from xlforge.commands.file import file_app
+from xlforge.commands.named_range import named_range_app
+from xlforge.commands.properties import properties_app
 from xlforge.commands.range import range_app
 from xlforge.commands.rowcol import col_app, row_app
 from xlforge.commands.sheet import sheet_app
+from xlforge.commands.style import style_app
+from xlforge.commands.validation import validation_app
 
 app = typer.Typer()
 app.add_typer(cell_app, name="cell")
 app.add_typer(col_app, name="column")
 app.add_typer(csv_app, name="csv")
 app.add_typer(file_app, name="file")
+app.add_typer(named_range_app, name="named-range")
+app.add_typer(properties_app, name="properties")
 app.add_typer(range_app, name="range")
 app.add_typer(row_app, name="row")
 app.add_typer(sheet_app, name="sheet")
+app.add_typer(style_app, name="style")
+app.add_typer(validation_app, name="validation")
 
 
 @app.command()

@@ -67,6 +67,15 @@ class Workbook:
     def __enter__(self) -> Self:
         return self.open()
 
+    def __str__(self) -> str:
+        return str(self._path)
+
+    def __repr__(self) -> str:
+        return f"Workbook(path={self._path!r})"
+
+    def __bool__(self) -> bool:
+        return self._is_open
+
     def __exit__(self, *args: object) -> None:
         self.close()
 

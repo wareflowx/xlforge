@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterator
 
 from xlforge.core.types.cell_ref import CellRef
 from xlforge.core.types.cell_value import CellValue
@@ -89,6 +89,30 @@ class Sheet:
         """Check if sheet is protected."""
         # TODO: Implement with openpyxl/xlwings
         return False
+
+    @property
+    def used_range(self) -> Range:
+        """Get the used range of this sheet."""
+        dimensions = self._workbook.engine.get_sheet_dimensions(
+            self._workbook.path, self._name
+        )
+        return Range(sheet=self, coord=dimensions)
+
+    def __str__(self) -> str:
+        return self._name
+
+    def __len__(self) -> int:
+        """Number of rows in used range."""
+        return len(self.used_range.values)
+
+    def __iter__(self) -> Iterator[list[CellValue]]:
+        """Iterate over rows."""
+        for row in self.used_range.values:
+            yield row
+
+    def __contains__(self, item: str) -> bool:
+        """Check if cell exists."""
+        return self._workbook.engine.cell_exists(self._workbook.path, self._name, item)
 
     def __repr__(self) -> str:
         return f"Sheet({self._name!r})"

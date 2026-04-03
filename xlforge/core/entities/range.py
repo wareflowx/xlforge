@@ -71,5 +71,8 @@ class Range:
         dest_range = self._sheet.range(dest_coord)
         dest_range.set_values([[v.raw for v in row] for row in values])
 
+    def __str__(self) -> str:
+        return self._coord
+
     def __repr__(self) -> str:
         return f"Range({self._sheet.name!r}, {self._coord!r})"

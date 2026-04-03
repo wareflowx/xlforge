@@ -141,3 +141,28 @@ class Engine(ABC):
             True if sheet exists.
         """
         raise NotImplementedError
+
+    def get_sheet_dimensions(self, path: Path, sheet: str) -> str:
+        """Get the used range dimensions for a sheet.
+
+        Args:
+            path: Path to the workbook file.
+            sheet: Sheet name.
+
+        Returns:
+            Range string (e.g., 'A1:C10') representing the used range.
+        """
+        raise NotImplementedError
+
+    def cell_exists(self, path: Path, sheet: str, coord: str) -> bool:
+        """Check if a cell exists within the used range.
+
+        Args:
+            path: Path to the workbook file.
+            sheet: Sheet name.
+            coord: Cell coordinate (e.g., 'A1').
+
+        Returns:
+            True if the cell exists in the used range.
+        """
+        raise NotImplementedError

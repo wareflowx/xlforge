@@ -116,6 +116,31 @@ class OpenpyxlEngine(Engine):
             return False
         return sheet in wb.sheetnames
 
+    def get_sheet_dimensions(self, path: Path, sheet: str) -> str:
+        """Get the used range dimensions for a sheet."""
+        wb = self._workbooks.get(path)
+        if wb is None:
+            raise FileNotFoundError(f"Workbook not open: {path}")
+        ws = wb[sheet]
+        return ws.dimensions
+
+    def cell_exists(self, path: Path, sheet: str, coord: str) -> bool:
+        """Check if a cell exists within the used range."""
+        wb = self._workbooks.get(path)
+        if wb is None:
+            raise FileNotFoundError(f"Workbook not open: {path}")
+        ws = wb[sheet]
+        # Check if coord is within the sheet's used range
+        dimensions = ws.dimensions
+        if not dimensions:
+            return False
+        try:
+            # openpyxl can access the cell directly
+            ws[coord]
+            return True
+        except KeyError, AttributeError:
+            return False
+
     def _cell_to_value(self, cell: openpyxl.cell.cell.Cell) -> CellValue:
         """Convert openpyxl cell to CellValue."""
         if cell.value is None:

@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
+from xlforge.core.entities.sheet import Sheet
+
 if TYPE_CHECKING:
     from xlforge.core.engines.base import Engine
-    from xlforge.core.entities.sheet import Sheet
 
 
 class Workbook:

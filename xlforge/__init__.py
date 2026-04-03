@@ -1,6 +1,9 @@
 import typer
 
+from xlforge.commands.file import file_app
+
 app = typer.Typer()
+app.add_typer(file_app, name="file")
 
 
 @app.command()

@@ -1,3 +1,4 @@
+import csv
 import os
 import tempfile
 
@@ -417,4 +418,523 @@ class TestCellWrite:
             wb = openpyxl.load_workbook(path)
             assert wb.active["A1"].value == "00123"
             wb.close()
+
+
+class TestRangeRead:
+    """Tests for xlforge range read command."""
+
+    def test_range_read_file_not_found(self):
+        """Test range read with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["range", "read", path, "Sheet1", "A1:C3"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_range_read_sheet_not_found(self):
+        """Test range read with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["range", "read", path, "NonexistentSheet", "A1:C3"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_range_read_table_output(self):
+        """Test reading a range with table output."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Name"
+            ws["B1"] = "Age"
+            ws["C1"] = "Active"
+            ws["A2"] = "Alice"
+            ws["B2"] = 30
+            ws["C2"] = True
+            ws["A3"] = "Bob"
+            ws["B3"] = 25
+            ws["C3"] = False
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["range", "read", path, "Sheet1", "A1:C3"])
+
+            assert result.exit_code == 0
+            assert "Range: A1:C3" in result.output
+            assert "3 rows x 3 columns" in result.output
+            assert "Name" in result.output
+            assert "Alice" in result.output
+            assert "30" in result.output
+
+    def test_range_read_json_output(self):
+        """Test reading a range with JSON output."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Hello"
+            ws["B1"] = 42
+            ws["A2"] = "World"
+            ws["B2"] = True
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["range", "read", path, "Sheet1", "A1:B2", "--json"])
+
+            assert result.exit_code == 0
+            data = json.loads(result.output)
+            assert data == [["Hello", 42], ["World", True]]
+
+    def test_range_read_single_cell(self):
+        """Test reading a single cell as a range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Single Cell"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["range", "read", path, "Sheet1", "A1:A1"])
+
+            assert result.exit_code == 0
+            assert "Single Cell" in result.output
+            assert "1 rows x 1 columns" in result.output
+
+    def test_range_read_empty_range(self):
+        """Test reading an empty range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["range", "read", path, "Sheet1", "A1:B2"])
+
+            assert result.exit_code == 0
+            # Empty cells will show as empty range message
+            assert "A1:B2 is empty" in result.output
+
+
+class TestRangeWrite:
+    """Tests for xlforge range write command."""
+
+    def test_range_write_file_not_found(self):
+        """Test range write with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["range", "write", path, "Sheet1", "A1:C3", '[["a","b"],["c","d"]]'])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_range_write_sheet_not_found(self):
+        """Test range write with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["range", "write", path, "NonexistentSheet", "A1:C3", '[["a","b"],["c","d"]]'])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_range_write_json_values(self):
+        """Test writing values from JSON."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "range", "write", path, "Sheet", "A1:C3",
+                '[["Name","Age","Active"],["Alice",30,true],["Bob",25,false]]'
+            ])
+
+            assert result.exit_code == 0
+            assert "Written 3 row(s) x 3 column(s) to range A1:C3" in result.output
+
+            # Verify the values were written
+            wb = openpyxl.load_workbook(path)
+            ws = wb.active
+            assert ws["A1"].value == "Name"
+            assert ws["B1"].value == "Age"
+            assert ws["C1"].value == "Active"
+            assert ws["A2"].value == "Alice"
+            assert ws["B2"].value == 30
+            assert ws["C2"].value is True
+            assert ws["A3"].value == "Bob"
+            assert ws["B3"].value == 25
+            assert ws["C3"].value is False
+            wb.close()
+
+    def test_range_write_csv_file(self):
+        """Test writing values from CSV file."""
+        import csv
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            # Create CSV file
+            csv_path = os.path.join(tmpdir, "values.csv")
+            with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Product", "Price", "Qty"])
+                writer.writerow(["Apple", "1.50", "100"])
+                writer.writerow(["Banana", "0.75", "200"])
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "range", "write", path, "Sheet", "A1:C3",
+                "--csv", csv_path
+            ])
+
+            assert result.exit_code == 0
+            assert "Written 3 row(s) x 3 column(s) to range A1:C3" in result.output
+
+            # Verify the values were written
+            wb = openpyxl.load_workbook(path)
+            ws = wb.active
+            assert ws["A1"].value == "Product"
+            assert ws["B1"].value == "Price"
+            assert ws["C1"].value == "Qty"
+            assert ws["A2"].value == "Apple"
+            assert ws["B2"].value == "1.50"
+            assert ws["C2"].value == "100"
+            assert ws["A3"].value == "Banana"
+            assert ws["B3"].value == "0.75"
+            assert ws["C3"].value == "200"
+            wb.close()
+
+    def test_range_write_invalid_json(self):
+        """Test writing with invalid JSON returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "range", "write", path, "Sheet", "A1:B2",
+                "not valid json"
+            ])
+
+            assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
+            assert "Invalid JSON" in result.output
+
+    def test_range_write_csv_file_not_found(self):
+        """Test writing with non-existent CSV file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            csv_path = os.path.join(tmpdir, "nonexistent.csv")
+            result = runner.invoke(app, [
+                "range", "write", path, "Sheet", "A1:B2",
+                "--csv", csv_path
+            ])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_range_write_missing_values(self):
+        """Test writing without providing values returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "range", "write", path, "Sheet", "A1:B2"
+            ])
+
+            assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
+            assert "Must provide either" in result.output
+
+    def test_range_write_both_json_and_csv_error(self):
+        """Test writing with both JSON and CSV returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            csv_path = os.path.join(tmpdir, "values.csv")
+            with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                f.write("a,b\nc,d")
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, [
+                "range", "write", path, "Sheet", "A1:B2",
+                '[["a","b"],["c","d"]]', "--csv", csv_path
+            ])
+
+            assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
+            assert "Cannot specify both" in result.output
+
+
+class TestCsvImport:
+    """Tests for xlforge csv import command."""
+
+    def test_csv_import_file_not_found(self):
+        """Test csv import with non-existent CSV file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            csv_path = os.path.join(tmpdir, "nonexistent.csv")
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet"])
+
+            assert result.exit_code == ErrorCode.CSV_NOT_FOUND
+            assert "does not exist" in result.output.lower()
+
+    def test_csv_import_excel_file_not_found(self):
+        """Test csv import with non-existent Excel file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = os.path.join(tmpdir, "test.csv")
+            xlsx_path = os.path.join(tmpdir, "nonexistent.xlsx")
+
+            # Create CSV file
+            with open(csv_path, "w") as f:
+                f.write("a,b,c\n")
+
+            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_csv_import_sheet_not_found(self):
+        """Test csv import with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            csv_path = os.path.join(tmpdir, "test.csv")
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+
+            # Create CSV file
+            with open(csv_path, "w") as f:
+                f.write("a,b,c\n")
+
+            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "NonExistent"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "not found" in result.output.lower()
+
+    def test_csv_import_basic(self):
+        """Test basic CSV import."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            csv_path = os.path.join(tmpdir, "test.csv")
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+
+            # Create CSV file
+            with open(csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Name", "Age", "City"])
+                writer.writerow(["Alice", "30", "NYC"])
+                writer.writerow(["Bob", "25", "LA"])
+
+            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet"])
+
+            assert result.exit_code == 0
+            assert "Imported" in result.output
+
+            # Verify data was imported (numbers are type-coerced)
+            wb = openpyxl.load_workbook(xlsx_path)
+            ws = wb.active
+            assert ws["A1"].value == "Name"
+            assert ws["B1"].value == "Age"
+            assert ws["C1"].value == "City"
+            assert ws["A2"].value == "Alice"
+            assert ws["B2"].value == 30  # Number, not string
+            assert ws["C2"].value == "NYC"
+            assert ws["A3"].value == "Bob"
+            assert ws["B3"].value == 25
+            assert ws["C3"].value == "LA"
+            wb.close()
+
+    def test_csv_import_with_header(self):
+        """Test CSV import with --has-header option."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            csv_path = os.path.join(tmpdir, "test.csv")
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+
+            # Create CSV file
+            with open(csv_path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Name", "Age", "City"])
+                writer.writerow(["Alice", "30", "NYC"])
+                writer.writerow(["Bob", "25", "LA"])
+
+            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet", "--has-header"])
+
+            assert result.exit_code == 0
+
+            # Verify header row was skipped and data starts at A1 (numbers are type-coerced)
+            wb = openpyxl.load_workbook(xlsx_path)
+            ws = wb.active
+            assert ws["A1"].value == "Alice"
+            assert ws["B1"].value == 30  # Number, not string
+            assert ws["A2"].value == "Bob"
+            wb.close()
+
+    def test_csv_import_empty_file(self):
+        """Test CSV import with empty file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            csv_path = os.path.join(tmpdir, "empty.csv")
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+
+            # Create empty CSV file
+            with open(csv_path, "w") as f:
+                pass
+
+            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet"])
+
+            assert result.exit_code == ErrorCode.INVALID_CSV_FORMAT
+            assert "empty" in result.output.lower()
+
+
+class TestCsvExport:
+    """Tests for xlforge csv export command."""
+
+    def test_csv_export_file_not_found(self):
+        """Test csv export with non-existent Excel file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["csv", "export", path, "Sheet"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_csv_export_sheet_not_found(self):
+        """Test csv export with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["csv", "export", path, "NonExistent"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "not found" in result.output.lower()
+
+    def test_csv_export_basic(self):
+        """Test basic CSV export to stdout."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Name"
+            ws["B1"] = "Age"
+            ws["C1"] = "City"
+            ws["A2"] = "Alice"
+            ws["B2"] = "30"
+            ws["C2"] = "NYC"
+            ws["A3"] = "Bob"
+            ws["B3"] = "25"
+            ws["C3"] = "LA"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["csv", "export", path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "Name" in result.output
+            assert "Alice" in result.output
+            assert "30" in result.output
+            assert "Bob" in result.output
+
+    def test_csv_export_to_file(self):
+        """Test CSV export to output file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Name"
+            ws["B1"] = "Age"
+            ws["A2"] = "Alice"
+            ws["B2"] = "30"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+            csv_path = os.path.join(tmpdir, "output.csv")
+            result = runner.invoke(app, ["csv", "export", xlsx_path, "Sheet1", "--output", csv_path])
+
+            assert result.exit_code == 0
+            assert "Exported" in result.output
+
+            # Verify CSV content
+            with open(csv_path, "r") as f:
+                content = f.read()
+            assert "Name" in content
+            assert "Alice" in content
+
+    def test_csv_export_with_range(self):
+        """Test CSV export with specified range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Name"
+            ws["B1"] = "Age"
+            ws["C1"] = "City"
+            ws["A2"] = "Alice"
+            ws["B2"] = "30"
+            ws["C2"] = "NYC"
+            ws["A3"] = "Bob"
+            ws["B3"] = "25"
+            ws["C3"] = "LA"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+            csv_path = os.path.join(tmpdir, "output.csv")
+            result = runner.invoke(app, ["csv", "export", xlsx_path, "Sheet1", "--range", "A1:B2", "--output", csv_path])
+
+            assert result.exit_code == 0
+
+            # Verify CSV content (only A1:B2)
+            with open(csv_path, "r") as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+            assert rows[0][0] == "Name"
+            assert rows[0][1] == "Age"
+            assert rows[1][0] == "Alice"
+            assert rows[1][1] == "30"
+            assert len(rows) == 2
+
+    def test_csv_export_number_coercion(self):
+        """Test CSV export properly handles number types."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Name"
+            ws["B1"] = "Score"
+            ws["A2"] = "Alice"
+            ws["B2"] = 42.5
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            xlsx_path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["csv", "export", xlsx_path, "Sheet1"])
+
+            assert result.exit_code == 0
+            assert "42.5" in result.output
 

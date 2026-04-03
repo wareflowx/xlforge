@@ -215,7 +215,9 @@ class TestCellValueTypeConversions:
 
     def test_as_number_from_string_raises(self):
         cv = CellValue(raw="hello", type=ValueType.STRING)
-        with pytest.raises(TypeError, match="Cannot convert ValueType.STRING to number"):
+        with pytest.raises(
+            TypeError, match="Cannot convert ValueType.STRING to number"
+        ):
             cv.as_number()
 
     def test_as_number_from_empty_raises(self):

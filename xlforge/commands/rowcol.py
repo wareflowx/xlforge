@@ -1,5 +1,8 @@
 """Row and column operations CLI commands."""
 
+# Note: This command uses openpyxl directly and bypasses the Engine abstraction.
+# It works with OpenpyxlEngine but not with XlwingsEngine.
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -938,3 +938,247 @@ class TestCsvExport:
             assert result.exit_code == 0
             assert "42.5" in result.output
 
+
+class TestRowHide:
+    """Tests for xlforge row hide command."""
+
+    def test_row_hide_file_not_found(self):
+        """Test row hide with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["row", "hide", path, "Sheet1", "1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_row_hide_sheet_not_found(self):
+        """Test row hide with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "hide", path, "NonexistentSheet", "1"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_row_hide_invalid_row(self):
+        """Test row hide with invalid row number returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "hide", path, "Sheet", "0"])
+
+            assert result.exit_code == ErrorCode.ROW_NOT_FOUND
+            assert "Invalid row" in result.output
+
+    def test_row_hide_success(self):
+        """Test hiding a row."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Header"
+            ws["A2"] = "Data"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "hide", path, "Sheet1", "1"])
+
+            assert result.exit_code == 0
+            assert "Hid row 1" in result.output
+
+            # Verify row is hidden
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].row_dimensions[1].hidden is True
+            wb.close()
+
+
+class TestRowUnhide:
+    """Tests for xlforge row unhide command."""
+
+    def test_row_unhide_file_not_found(self):
+        """Test row unhide with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["row", "unhide", path, "Sheet1", "1"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_row_unhide_sheet_not_found(self):
+        """Test row unhide with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "unhide", path, "NonexistentSheet", "1"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_row_unhide_invalid_row(self):
+        """Test row unhide with invalid row number returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "unhide", path, "Sheet", "0"])
+
+            assert result.exit_code == ErrorCode.ROW_NOT_FOUND
+            assert "Invalid row" in result.output
+
+    def test_row_unhide_success(self):
+        """Test unhiding a row."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws.row_dimensions[1].hidden = True
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["row", "unhide", path, "Sheet1", "1"])
+
+            assert result.exit_code == 0
+            assert "Unhid row 1" in result.output
+
+            # Verify row is visible
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].row_dimensions[1].hidden is False
+            wb.close()
+
+
+class TestColumnHide:
+    """Tests for xlforge column hide command."""
+
+    def test_column_hide_file_not_found(self):
+        """Test column hide with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["column", "hide", path, "Sheet1", "A"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_column_hide_sheet_not_found(self):
+        """Test column hide with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "hide", path, "NonexistentSheet", "A"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_column_hide_success(self):
+        """Test hiding a column."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws["A1"] = "Header1"
+            ws["B1"] = "Header2"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "hide", path, "Sheet1", "A"])
+
+            assert result.exit_code == 0
+            assert "Hid column A" in result.output
+
+            # Verify column is hidden
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["A"].hidden is True
+            wb.close()
+
+    def test_column_hide_lowercase(self):
+        """Test hiding a column with lowercase letter."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "hide", path, "Sheet1", "b"])
+
+            assert result.exit_code == 0
+            assert "Hid column B" in result.output
+
+            # Verify column is hidden
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["B"].hidden is True
+            wb.close()
+
+
+class TestColumnUnhide:
+    """Tests for xlforge column unhide command."""
+
+    def test_column_unhide_file_not_found(self):
+        """Test column unhide with non-existent file returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            result = runner.invoke(app, ["column", "unhide", path, "Sheet1", "A"])
+
+            assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
+            assert "does not exist" in result.output.lower()
+
+    def test_column_unhide_sheet_not_found(self):
+        """Test column unhide with non-existent sheet returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "unhide", path, "NonexistentSheet", "A"])
+
+            assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
+            assert "Sheet not found" in result.output
+
+    def test_column_unhide_success(self):
+        """Test unhiding a column."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws.column_dimensions["A"].hidden = True
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "unhide", path, "Sheet1", "A"])
+
+            assert result.exit_code == 0
+            assert "Unhid column A" in result.output
+
+            # Verify column is visible
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["A"].hidden is False
+            wb.close()
+
+    def test_column_unhide_lowercase(self):
+        """Test unhiding a column with lowercase letter."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sheet1"
+            ws.column_dimensions["B"].hidden = True
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["column", "unhide", path, "Sheet1", "b"])
+
+            assert result.exit_code == 0
+            assert "Unhid column B" in result.output
+
+            # Verify column is visible
+            wb = openpyxl.load_workbook(path)
+            assert wb["Sheet1"].column_dimensions["B"].hidden is False
+            wb.close()

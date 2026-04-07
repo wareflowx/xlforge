@@ -273,7 +273,8 @@ def delete(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     name: Annotated[str, typer.Argument(help="Name of the table to delete.")],
     sheet: Annotated[
-        Optional[str], typer.Option("--sheet", "-s", help="Sheet name containing the table.")
+        Optional[str],
+        typer.Option("--sheet", "-s", help="Sheet name containing the table."),
     ] = None,
 ) -> None:
     """Delete a table from the workbook."""

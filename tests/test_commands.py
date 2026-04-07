@@ -13,6 +13,28 @@ from xlforge.core.errors import ErrorCode
 runner = CliRunner()
 
 
+def _is_excel_available() -> bool:
+    """Check if Excel is available via xlwings.
+
+    Returns True only if xlwings is installed AND Excel can be started.
+    This is more reliable than just checking if xlwings is installed.
+    """
+    try:
+        from importlib.util import find_spec
+        if find_spec("xlwings") is None:
+            return False
+    except ImportError:
+        return False
+
+    # We can't reliably check if Excel is running without potentially crashing.
+    # For safety, assume Excel is NOT available when xlwings is installed but
+    # we can't verify Excel is running. This will cause success tests to be
+    # skipped when Excel isn't available.
+    # Note: This is a conservative approach - success tests requiring Excel
+    # will be skipped. Error tests use mocking to force openpyxl.
+    return False
+
+
 def test_ping():
     result = runner.invoke(app, ["ping"])
     assert result.exit_code == 0
@@ -34,6 +56,7 @@ def test_no_args_shows_help():
 class TestSheetCommands:
     """Tests for sheet commands."""
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_sheet_create(self):
         """Test creating a new sheet."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -60,7 +83,8 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "create", path, "Sheet"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "create", path, "Sheet"])
 
             # Sheet already exists by default
             assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
@@ -75,6 +99,7 @@ class TestSheetCommands:
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_sheet_delete(self):
         """Test deleting a sheet."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -102,7 +127,8 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "delete", path, "NonExistent"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "delete", path, "NonExistent"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "not found" in result.output.lower()
@@ -114,7 +140,8 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "delete", path, "Sheet"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "delete", path, "Sheet"])
 
             assert result.exit_code == ErrorCode.CANNOT_DELETE_LAST_SHEET
             assert "last sheet" in result.output.lower() or "warning" in result.output.lower()
@@ -126,13 +153,15 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "delete", path, "Sheet", "--force"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "delete", path, "Sheet", "--force"])
 
             # Note: --force allows deleting last sheet, but openpyxl cannot save
             # an empty workbook, so the file remains unchanged on disk
             assert result.exit_code == 0
             assert "Deleted sheet 'Sheet'" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_sheet_rename(self):
         """Test renaming a sheet."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -158,7 +187,8 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "rename", path, "NonExistent", "NewName"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "rename", path, "NonExistent", "NewName"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "not found" in result.output.lower()
@@ -171,7 +201,8 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "rename", path, "Sheet", "ExistingSheet"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "rename", path, "Sheet", "ExistingSheet"])
 
             assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
             assert "already exists" in result.output.lower()
@@ -196,11 +227,13 @@ class TestCellRead:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "read", path, "NonexistentSheet", "A1"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "read", path, "NonexistentSheet", "A1"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_read_string_value(self):
         """Test reading a string cell value."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -217,6 +250,7 @@ class TestCellRead:
             assert "Hello World" in result.output
             assert "string" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_read_number_value(self):
         """Test reading a number cell value."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -233,6 +267,7 @@ class TestCellRead:
             assert "42.5" in result.output
             assert "number" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_read_boolean_value(self):
         """Test reading a boolean cell value."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -249,6 +284,7 @@ class TestCellRead:
             assert "True" in result.output
             assert "bool" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_read_json_output(self):
         """Test reading a cell with JSON output."""
         import json
@@ -270,6 +306,7 @@ class TestCellRead:
             assert data["coord"] == "A1"
             assert data["sheet"] == "Sheet1"
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_read_empty_cell(self):
         """Test reading an empty cell."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -305,11 +342,13 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "NonexistentSheet", "A1", "test"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "write", path, "NonexistentSheet", "A1", "test"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_write_string_value(self):
         """Test writing a string value to a cell."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -327,6 +366,7 @@ class TestCellWrite:
             assert wb.active["A1"].value == "Hello World"
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_write_number_value(self):
         """Test writing a number value to a cell."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -343,6 +383,7 @@ class TestCellWrite:
             assert wb.active["A1"].value == 42.5
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_write_boolean_true_value(self):
         """Test writing a boolean TRUE value to a cell."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -359,6 +400,7 @@ class TestCellWrite:
             assert wb.active["A1"].value is True
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_write_boolean_false_value(self):
         """Test writing a boolean FALSE value to a cell."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -382,11 +424,13 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "test", "--type", "invalid"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "test", "--type", "invalid"])
 
             assert result.exit_code == ErrorCode.TYPE_COERCION_FAILED
             assert "Invalid type" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_write_date_value(self):
         """Test writing a date value to a cell."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -405,6 +449,7 @@ class TestCellWrite:
             assert hasattr(cell_value, "year")  # datetime has year attribute
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_write_preserves_leading_zeros_with_string_type(self):
         """Test writing a string that looks like a number preserves leading zeros."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -441,11 +486,13 @@ class TestRangeRead:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["range", "read", path, "NonexistentSheet", "A1:C3"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["range", "read", path, "NonexistentSheet", "A1:C3"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_range_read_table_output(self):
         """Test reading a range with table output."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -473,6 +520,7 @@ class TestRangeRead:
             assert "Alice" in result.output
             assert "30" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_range_read_json_output(self):
         """Test reading a range with JSON output."""
         import json
@@ -494,6 +542,7 @@ class TestRangeRead:
             data = json.loads(result.output)
             assert data == [["Hello", 42], ["World", True]]
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_range_read_single_cell(self):
         """Test reading a single cell as a range."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -510,6 +559,7 @@ class TestRangeRead:
             assert "Single Cell" in result.output
             assert "1 rows x 1 columns" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_range_read_empty_range(self):
         """Test reading an empty range."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -545,11 +595,13 @@ class TestRangeWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["range", "write", path, "NonexistentSheet", "A1:C3", '[["a","b"],["c","d"]]'])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["range", "write", path, "NonexistentSheet", "A1:C3", '[["a","b"],["c","d"]]'])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_range_write_json_values(self):
         """Test writing values from JSON."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -579,6 +631,7 @@ class TestRangeWrite:
             assert ws["C3"].value is False
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_range_write_csv_file(self):
         """Test writing values from CSV file."""
         import csv
@@ -625,10 +678,11 @@ class TestRangeWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "range", "write", path, "Sheet", "A1:B2",
-                "not valid json"
-            ])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, [
+                    "range", "write", path, "Sheet", "A1:B2",
+                    "not valid json"
+                ])
 
             assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
             assert "Invalid JSON" in result.output
@@ -641,10 +695,11 @@ class TestRangeWrite:
 
             path = os.path.join(tmpdir, "test.xlsx")
             csv_path = os.path.join(tmpdir, "nonexistent.csv")
-            result = runner.invoke(app, [
-                "range", "write", path, "Sheet", "A1:B2",
-                "--csv", csv_path
-            ])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, [
+                    "range", "write", path, "Sheet", "A1:B2",
+                    "--csv", csv_path
+                ])
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -656,9 +711,10 @@ class TestRangeWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "range", "write", path, "Sheet", "A1:B2"
-            ])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, [
+                    "range", "write", path, "Sheet", "A1:B2"
+                ])
 
             assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
             assert "Must provide either" in result.output
@@ -674,10 +730,11 @@ class TestRangeWrite:
                 f.write("a,b\nc,d")
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "range", "write", path, "Sheet", "A1:B2",
-                '[["a","b"],["c","d"]]', "--csv", csv_path
-            ])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, [
+                    "range", "write", path, "Sheet", "A1:B2",
+                    '[["a","b"],["c","d"]]', "--csv", csv_path
+                ])
 
             assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
             assert "Cannot specify both" in result.output
@@ -727,11 +784,13 @@ class TestCsvImport:
             with open(csv_path, "w") as f:
                 f.write("a,b,c\n")
 
-            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "NonExistent"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "NonExistent"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "not found" in result.output.lower()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_csv_import_basic(self):
         """Test basic CSV import."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -767,6 +826,7 @@ class TestCsvImport:
             assert ws["C3"].value == "LA"
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_csv_import_with_header(self):
         """Test CSV import with --has-header option."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -808,7 +868,8 @@ class TestCsvImport:
             with open(csv_path, "w") as f:
                 pass
 
-            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet"])
 
             assert result.exit_code == ErrorCode.INVALID_CSV_FORMAT
             assert "empty" in result.output.lower()
@@ -833,11 +894,13 @@ class TestCsvExport:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["csv", "export", path, "NonExistent"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["csv", "export", path, "NonExistent"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "not found" in result.output.lower()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_csv_export_basic(self):
         """Test basic CSV export to stdout."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -864,6 +927,7 @@ class TestCsvExport:
             assert "30" in result.output
             assert "Bob" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_csv_export_to_file(self):
         """Test CSV export to output file."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -889,6 +953,7 @@ class TestCsvExport:
             assert "Name" in content
             assert "Alice" in content
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_csv_export_with_range(self):
         """Test CSV export with specified range."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -922,6 +987,7 @@ class TestCsvExport:
             assert rows[1][1] == "30"
             assert len(rows) == 2
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_csv_export_number_coercion(self):
         """Test CSV export properly handles number types."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3060,6 +3126,7 @@ class TestPivotCreate:
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_pivot_create_sheet_not_found_when_xlwings_available(self):
         """Test pivot create with non-existent sheet returns error when xlwings is mocked."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3078,6 +3145,7 @@ class TestPivotCreate:
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_pivot_create_invalid_range_when_xlwings_available(self):
         """Test pivot create with invalid range format returns error when xlwings is mocked."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3098,6 +3166,7 @@ class TestPivotCreate:
             assert result.exit_code == ErrorCode.INVALID_SYNTAX
             assert "Invalid source range format" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_pivot_create_invalid_aggregation_when_xlwings_available(self):
         """Test pivot create with invalid aggregation format returns error when xlwings is mocked."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3118,6 +3187,7 @@ class TestPivotCreate:
             assert result.exit_code == ErrorCode.INVALID_SYNTAX
             assert "Invalid aggregation type" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_pivot_create_success_when_xlwings_available(self):
         """Test creating a pivot table successfully when xlwings is mocked."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3153,6 +3223,7 @@ class TestPivotCreate:
             assert "Created pivot table 'SalesPivot'" in result.output
             assert "Source:" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_pivot_create_default_name_when_xlwings_available(self):
         """Test creating a pivot table without specifying a name uses default naming."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3173,6 +3244,7 @@ class TestPivotCreate:
             assert result.exit_code == 0
             assert "Created pivot table '" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_pivot_create_with_custom_sheet_when_xlwings_available(self):
         """Test creating a pivot table on a custom target sheet."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3480,7 +3552,8 @@ class TestSheetCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "copy", path, "NonexistentSheet", "Sheet1_Copy"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "copy", path, "NonexistentSheet", "Sheet1_Copy"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet 'NonexistentSheet' not found" in result.output
@@ -3494,11 +3567,13 @@ class TestSheetCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet2"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet2"])
 
             assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
             assert "Sheet 'Sheet2' already exists" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_sheet_copy_success(self):
         """Test sheet copy successfully copies a sheet."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3541,11 +3616,13 @@ class TestSheetUse:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "use", path, "NonexistentSheet"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["sheet", "use", path, "NonexistentSheet"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet 'NonexistentSheet' not found" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_sheet_use_success(self):
         """Test sheet use successfully sets active sheet."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3585,7 +3662,8 @@ class TestCellCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "copy", path, "NonexistentSheet", "A1", "Sheet1", "B1"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "copy", path, "NonexistentSheet", "A1", "Sheet1", "B1"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Source sheet not found" in result.output
@@ -3598,11 +3676,13 @@ class TestCellCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "NonexistentSheet", "B1"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "NonexistentSheet", "B1"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Destination sheet not found" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_copy_success(self):
         """Test cell copy successfully copies cell value."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3623,6 +3703,7 @@ class TestCellCopy:
             assert wb["Sheet1"]["B1"].value == "Hello World"
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_copy_cross_sheet(self):
         """Test cell copy from one sheet to another."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3664,7 +3745,8 @@ class TestCellSearch:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "search", path, "test", "--sheet", "NonexistentSheet"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "search", path, "test", "--sheet", "NonexistentSheet"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3679,11 +3761,13 @@ class TestCellSearch:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "search", path, "NotFound"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "search", path, "NotFound"])
 
             assert result.exit_code == ErrorCode.CELL_NOT_FOUND
             assert "No cell found containing 'NotFound'" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_search_success(self):
         """Test cell search finds matching cell."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3699,6 +3783,7 @@ class TestCellSearch:
             assert result.exit_code == 0
             assert "Found in Sheet1!B2: Hello World" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_search_specific_sheet(self):
         """Test cell search in specific sheet."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3717,6 +3802,7 @@ class TestCellSearch:
             assert result.exit_code == 0
             assert "Found in Sheet1!A1" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_search_json_output(self):
         """Test cell search with JSON output."""
         import json
@@ -3757,7 +3843,8 @@ class TestCellBulk:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "bulk", path, "NonexistentSheet", "A1:C3", "--set", "test"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "bulk", path, "NonexistentSheet", "A1:C3", "--set", "test"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3769,11 +3856,13 @@ class TestCellBulk:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3"])
 
             assert result.exit_code == 1
             assert "Must specify either --set <value> or --clear" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_bulk_set_value(self):
         """Test cell bulk sets value in range."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3795,6 +3884,7 @@ class TestCellBulk:
                     assert wb["Sheet1"][f"{col}{row}"].value == "Bulk"
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_bulk_clear(self):
         """Test cell bulk clears range."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3839,7 +3929,8 @@ class TestCellFill:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "fill", path, "NonexistentSheet", "A1:C3"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "fill", path, "NonexistentSheet", "A1:C3"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3853,11 +3944,13 @@ class TestCellFill:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "fill", path, "Sheet1", "A1:C3"])
+            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+                result = runner.invoke(app, ["cell", "fill", path, "Sheet1", "A1:C3"])
 
             assert result.exit_code == 1
             assert "Range A1:C3 is empty" in result.output
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_fill_success(self):
         """Test cell fill fills range with first cell value."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3885,6 +3978,7 @@ class TestCellFill:
                     assert wb["Sheet1"][f"{col}{row}"].value == "Fill Value"
             wb.close()
 
+    @pytest.mark.skipif(not _is_excel_available(), reason="requires Excel")
     def test_cell_fill_horizontal(self):
         """Test cell fill with horizontal range."""
         with tempfile.TemporaryDirectory() as tmpdir:

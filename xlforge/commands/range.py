@@ -79,6 +79,12 @@ def read(
                     typer.echo(f"Range {coord} is empty.")
                     return
 
+                # Check if all cells are empty
+                all_empty = all(cell.is_empty() for row in range_values for cell in row)
+                if all_empty:
+                    typer.echo(f"{coord} is empty")
+                    return
+
                 # Format as string values for table display
                 table_values = [[str(cell.raw) for cell in row] for row in range_values]
                 table = _format_table(table_values)

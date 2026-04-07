@@ -102,6 +102,8 @@ def index_to_col(index: int) -> str:
 
 def cell_ref_to_row_col(coord: str) -> tuple[int, int]:
     """Convert cell reference to (row, col) zero-based tuple."""
+    # Strip dollar signs for absolute references like $A$1
+    coord = coord.replace("$", "")
     match = CELL_REF_PATTERN.match(coord)
     if not match:
         raise ValueError(f"Invalid cell reference: {coord}")

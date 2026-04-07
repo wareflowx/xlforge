@@ -1,8 +1,10 @@
 import csv
 import os
 import tempfile
+import unittest.mock
 
 import openpyxl
+import pytest
 from typer.testing import CliRunner
 
 from xlforge import app
@@ -2198,7 +2200,8 @@ class TestChartCreate:
         """Test chart create with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
+            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
 
             # When xlwings is not available, returns FEATURE_UNAVAILABLE
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -2206,12 +2209,15 @@ class TestChartCreate:
 
     def test_chart_create_xlwings_not_available(self):
         """Test chart create returns error 9 when xlwings is not available."""
+        import unittest.mock
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
+            # Mock find_spec to return None to simulate xlwings not available
+            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
 
             # Verify error 9 is returned when xlwings is not available
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -2297,19 +2303,22 @@ class TestChartDelete:
         """Test chart delete with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
 
             # When xlwings is not available, returns FEATURE_UNAVAILABLE
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
     def test_chart_delete_xlwings_not_available(self):
         """Test chart delete returns error 9 when xlwings is not available."""
+        import unittest.mock
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
@@ -2370,18 +2379,21 @@ class TestChartList:
         """Test chart list with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
+            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+                result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
     def test_chart_list_xlwings_not_available(self):
         """Test chart list returns error 9 when xlwings is not available."""
+        import unittest.mock
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
+            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+                result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
@@ -3016,6 +3028,7 @@ class TestPivotCreate:
 
     def test_pivot_create_xlwings_not_available(self):
         """Test pivot create returns FEATURE_UNAVAILABLE when xlwings is not available."""
+        import unittest.mock
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             ws = wb.active
@@ -3023,10 +3036,11 @@ class TestPivotCreate:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(
-                app,
-                ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot"],
-            )
+            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+                result = runner.invoke(
+                    app,
+                    ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot"],
+                )
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
             assert "xlwings" in result.output.lower() or "headless" in result.output.lower()
@@ -3188,19 +3202,22 @@ class TestPivotList:
         """Test pivot list with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["pivot", "list", path])
+            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+                result = runner.invoke(app, ["pivot", "list", path])
 
             # xlwings not available returns FEATURE_UNAVAILABLE
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
     def test_pivot_list_xlwings_not_available(self):
         """Test pivot list when xlwings is not available."""
+        import unittest.mock
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["pivot", "list", path])
+            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+                result = runner.invoke(app, ["pivot", "list", path])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
             assert "xlwings" in result.output.lower() or "headless" in result.output.lower()
@@ -3213,18 +3230,21 @@ class TestPivotDelete:
         """Test pivot delete with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
+            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+                result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
     def test_pivot_delete_xlwings_not_available(self):
         """Test pivot delete when xlwings is not available."""
+        import unittest.mock
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
+            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+                result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
@@ -4247,3 +4267,102 @@ class TestFormatConditionCommands:
             assert result.exit_code == 0
             assert "Added greater-than rule" in result.output
             assert "bold" in result.output
+
+
+class TestAppCommands:
+    """Tests for app commands (require xlwings)."""
+
+    def test_app_visible_xlwings_not_available(self):
+        """Test app visible returns FEATURE_UNAVAILABLE when xlwings not installed."""
+        import unittest.mock
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+                result = runner.invoke(app, ["app", "visible", path, "true"])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower()
+
+    def test_app_calculate_xlwings_not_available(self):
+        """Test app calculate returns FEATURE_UNAVAILABLE when xlwings not installed."""
+        import unittest.mock
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+                result = runner.invoke(app, ["app", "calculate", path])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower()
+
+    def test_app_focus_xlwings_not_available(self):
+        """Test app focus returns FEATURE_UNAVAILABLE when xlwings not installed."""
+        import unittest.mock
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+                result = runner.invoke(app, ["app", "focus", path])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower()
+
+    def test_app_alert_xlwings_not_available(self):
+        """Test app alert returns FEATURE_UNAVAILABLE when xlwings not installed."""
+        import unittest.mock
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+                result = runner.invoke(app, ["app", "alert", path, "Hello"])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower()
+
+    def test_app_wait_idle_xlwings_not_available(self):
+        """Test app wait-idle returns FEATURE_UNAVAILABLE when xlwings not installed."""
+        import unittest.mock
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nonexistent.xlsx")
+            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+                result = runner.invoke(app, ["app", "wait-idle", path])
+
+            assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+            assert "xlwings" in result.output.lower()
+
+    def test_app_visible_invalid_value(self):
+        """Test app visible with invalid value returns error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+            result = runner.invoke(app, ["app", "visible", path, "maybe"])
+
+            assert result.exit_code == ErrorCode.INVALID_SYNTAX
+            assert "Invalid value" in result.output
+
+    def test_app_commands_xlwings_not_available(self):
+        """Test app commands return FEATURE_UNAVAILABLE when xlwings not installed."""
+        import unittest.mock
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wb = openpyxl.Workbook()
+            wb.save(os.path.join(tmpdir, "test.xlsx"))
+
+            path = os.path.join(tmpdir, "test.xlsx")
+
+            # Mock find_spec to return None for xlwings
+            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+                result = runner.invoke(app, ["app", "visible", path, "true"])
+                assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+                assert "xlwings" in result.output.lower()
+
+                result = runner.invoke(app, ["app", "calculate", path])
+                assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+                result = runner.invoke(app, ["app", "focus", path])
+                assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+                result = runner.invoke(app, ["app", "alert", path, "Hello"])
+                assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
+
+                result = runner.invoke(app, ["app", "wait-idle", path])
+                assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE

@@ -94,6 +94,15 @@ class XlwingsEngine(Engine):
             return
 
         xw = self._xw
+
+        # Close any existing workbook with the same name to avoid Excel error
+        # Excel doesn't allow two workbooks with the same name to be open
+        workbook_name = path.name
+        for book in xw.books:
+            if book.name == workbook_name:
+                book.close()
+                break
+
         wb = xw.Book(path)
 
         if read_only:
@@ -131,7 +140,12 @@ class XlwingsEngine(Engine):
         wb = self._get_workbook(path)
         ws = wb.sheets[sheet]
         cell = ws.range(coord)
-        cell.value = self._value_to_cell(value)
+        # For string values, set number format to text to preserve leading zeros
+        if value.type == ValueType.STRING:
+            cell.number_format = "@"
+            cell.value = value.raw
+        else:
+            cell.value = self._value_to_cell(value)
 
     def get_range(self, path: Path, sheet: str, coord: str) -> list[list[CellValue]]:
         """Get range values as 2D array."""
@@ -173,13 +187,22 @@ class XlwingsEngine(Engine):
 
         # Convert CellValue 2D array to plain Python values
         plain_values: list[list[Any]] = []
-        for row in values:
+        string_cells: list[tuple[int, int]] = []  # Track (row, col) of string cells (1-indexed)
+        for i, row in enumerate(values):
             plain_row: list[Any] = []
-            for value in row:
+            for j, value in enumerate(row):
                 plain_row.append(self._value_to_cell(value))
+                if value.type == ValueType.STRING:
+                    string_cells.append((i + 1, j + 1))
             plain_values.append(plain_row)
 
         rng.value = plain_values
+
+        # Set number format for string cells to preserve them
+        # Use ws.cells(row, col) which is 1-indexed
+        for row, col in string_cells:
+            ws.cells(row, col).number_format = "@"
+            ws.cells(row, col).value = self._value_to_cell(values[row - 1][col - 1])
 
     def create_sheet(self, path: Path, sheet: str) -> None:
         """Create a new sheet."""

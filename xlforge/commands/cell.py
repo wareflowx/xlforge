@@ -510,7 +510,7 @@ def bulk(
                 # Parse the range to get dimensions
                 if ":" not in coord:
                     # Single cell - use set_cell
-                    cell_value = CellValue.from_string(set_value)
+                    cell_value = CellValue.from_string(set_value)  # type: ignore[arg-type]
                     engine.set_cell(path, sheet, coord, cell_value)
                     workbook.save()
                     typer.echo(f"Set {coord} = {set_value}")
@@ -523,7 +523,7 @@ def bulk(
                     cols = end_col - start_col + 1
 
                     # Create 2D array with the set_value
-                    cell_value = CellValue.from_string(set_value)
+                    cell_value = CellValue.from_string(set_value)  # type: ignore[arg-type]
                     values = [[cell_value for _ in range(cols)] for _ in range(rows)]
                     engine.set_range(path, sheet, coord, values)
                     workbook.save()

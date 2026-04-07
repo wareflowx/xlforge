@@ -36,7 +36,7 @@ def _is_file_open_in_excel(path: Path) -> bool:
 
     # Approach 2: Use win32com to check if Excel has the file open
     try:
-        import win32com.client
+        import win32com.client  # type: ignore[import-untyped]
 
         excel = win32com.client.Dispatch("Excel.Application")
         excel.Visible = False

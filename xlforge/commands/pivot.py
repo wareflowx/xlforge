@@ -241,7 +241,7 @@ def create(
 
     excel = None
     try:
-        import win32com.client
+        import win32com.client  # type: ignore[import-untyped]
 
         # Use win32com directly to create pivot table (more reliable than xlwings api)
         excel = win32com.client.Dispatch("Excel.Application")
@@ -418,7 +418,7 @@ def list_pivots(
                 raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
 
             ws = wb[sheet_name]
-            for pivot in ws._pivots:
+            for pivot in ws._pivots:  # type: ignore[attr-defined]
                 pivots_found = True
                 typer.echo(f"Sheet: {sheet_name}, Pivot: {pivot.name}")
 
@@ -483,7 +483,7 @@ def delete(
 
             ws = wb[sheet]
             pivot_to_delete = None
-            for pivot in ws._pivots:
+            for pivot in ws._pivots:  # type: ignore[attr-defined]
                 if pivot.name == name:
                     pivot_to_delete = pivot
                     break
@@ -497,7 +497,7 @@ def delete(
                 wb.close()
                 raise typer.Exit(code=int(ErrorCode.PIVOT_CREATION_FAILED))
 
-            ws._pivots.remove(pivot_to_delete)
+            ws._pivots.remove(pivot_to_delete)  # type: ignore[attr-defined]
             wb.save(path)
             wb.close()
             typer.echo(f"Deleted pivot table '{name}' from sheet '{sheet}'")
@@ -506,9 +506,9 @@ def delete(
             found = False
             for sheet_name in wb.sheetnames:
                 ws = wb[sheet_name]
-                for pivot in ws._pivots:
+                for pivot in ws._pivots:  # type: ignore[attr-defined]
                     if pivot.name == name:
-                        ws._pivots.remove(pivot)
+                        ws._pivots.remove(pivot)  # type: ignore[attr-defined]
                         found = True
                         break
                 if found:
@@ -577,7 +577,7 @@ def refresh(
 
     excel = None
     try:
-        import win32com.client
+        import win32com.client  # type: ignore[import-untyped]
 
         excel = win32com.client.Dispatch("Excel.Application")
         excel.Visible = False
@@ -629,10 +629,10 @@ def refresh(
             raise typer.Exit(code=int(ErrorCode.PIVOT_REFRESH_FAILED))
 
         # Refresh the pivot table
-        target_pivot.RefreshTable()
+        target_pivot.RefreshTable()  # type: ignore[union-attr]
 
         # Save sheet name before closing (COM objects become invalid after close)
-        sheet_name = target_sheet.Name
+        sheet_name = target_sheet.Name  # type: ignore[union-attr]
 
         # Save and close workbook
         wb_com.Save()

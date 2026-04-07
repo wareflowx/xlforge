@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from importlib.util import find_spec
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import openpyxl
 import typer
@@ -125,7 +125,7 @@ def _create_native_table(
 
     excel = None
     try:
-        import win32com.client
+        import win32com.client  # type: ignore[import-untyped]
 
         # Use win32com directly to create native Excel table
         excel = win32com.client.Dispatch("Excel.Application")
@@ -273,7 +273,7 @@ def delete(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     name: Annotated[str, typer.Argument(help="Name of the table to delete.")],
     sheet: Annotated[
-        str, typer.Option("--sheet", "-s", help="Sheet name containing the table.")
+        Optional[str], typer.Option("--sheet", "-s", help="Sheet name containing the table.")
     ] = None,
 ) -> None:
     """Delete a table from the workbook."""

@@ -182,7 +182,7 @@ def write(
             else:
                 # Parse JSON
                 try:
-                    values = json.loads(values_json)
+                    values = json.loads(values_json)  # type: ignore[arg-type]
                 except json.JSONDecodeError as e:
                     typer.secho(
                         f"Error: Invalid JSON format: {e}",

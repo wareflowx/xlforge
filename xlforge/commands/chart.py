@@ -152,7 +152,7 @@ def _create_regular_chart(
 
         # Check if chart name already exists
         if name:
-            for existing_chart in ws._charts:
+            for existing_chart in ws._charts:  # type: ignore[attr-defined]
                 if _get_chart_title(existing_chart) == name:
                     typer.secho(
                         f"Error: Chart with name '{name}' already exists in {sheet}",
@@ -198,7 +198,7 @@ def _create_regular_chart(
 
         # Determine where to place the chart (default to right of data range)
         anchor_cell = f"{openpyxl.utils.get_column_letter(max_col + 2)}{min_row}"
-        ws.add_chart(chart, anchor_cell)
+        ws.add_chart(chart, anchor_cell)  # type: ignore[call-arg]
 
         # Save the workbook
         wb.save(path)
@@ -275,7 +275,7 @@ def _create_pivot_chart(
 
     excel = None
     try:
-        import win32com.client
+        import win32com.client  # type: ignore[import-untyped]
 
         # Use win32com directly for pivot chart creation
         excel = win32com.client.Dispatch("Excel.Application")
@@ -492,7 +492,7 @@ def delete(
 
         # Find the chart by name
         chart_to_delete = None
-        for chart in ws._charts:
+        for chart in ws._charts:  # type: ignore[attr-defined]
             if _get_chart_title(chart) == name:
                 chart_to_delete = chart
                 break
@@ -507,7 +507,7 @@ def delete(
             raise typer.Exit(code=int(ErrorCode.CHART_NOT_FOUND))
 
         # Remove the chart
-        ws._charts.remove(chart_to_delete)
+        ws._charts.remove(chart_to_delete)  # type: ignore[attr-defined]
 
         # Save the workbook
         wb.save(path)
@@ -569,7 +569,7 @@ def list(
         ws = wb[sheet]
 
         # List all charts
-        charts = ws._charts
+        charts = ws._charts  # type: ignore[attr-defined]
 
         if not charts:
             typer.echo(f"No charts found in {path} ({sheet})")

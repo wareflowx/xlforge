@@ -36,7 +36,7 @@ class XlwingsEngine(Engine):
                 raise ImportError(
                     "xlwings is not available. Install xlwings: pip install xlwings"
                 )
-            import xlwings
+            import xlwings  # type: ignore[import-not-found]
 
             self._xlwings = xlwings
         return self._xlwings
@@ -203,9 +203,9 @@ class XlwingsEngine(Engine):
 
         # Set number format for string cells to preserve them
         # Use ws.cells(row, col) which is 1-indexed
-        for row, col in string_cells:
-            ws.cells(row, col).number_format = "@"
-            ws.cells(row, col).value = self._value_to_cell(values[row - 1][col - 1])
+        for row, col in string_cells:  # type: ignore[assignment]
+            ws.cells(row, col).number_format = "@"  # type: ignore[assignment]
+            ws.cells(row, col).value = self._value_to_cell(values[row - 1][col - 1])  # type: ignore[assignment, index, operator]
 
     def create_sheet(self, path: Path, sheet: str) -> None:
         """Create a new sheet."""

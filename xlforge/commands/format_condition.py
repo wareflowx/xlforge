@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import openpyxl
 import openpyxl.styles
@@ -50,9 +50,9 @@ def _is_valid_hex_color(color: str) -> bool:
     return bool(re.match(r"^[0-9A-Fa-f]{6}$", color))
 
 
-def _parse_style_string(style: str) -> dict:
+def _parse_style_string(style: str) -> dict[str, Any]:
     """Parse a style string like 'bold text-#FF0000' into font properties."""
-    font_kwargs = {}
+    font_kwargs: dict[str, Any] = {}
     parts = style.lower().split()
 
     for part in parts:
@@ -270,8 +270,8 @@ def add(
             )
 
         elif actual_type == "color-scale":
-            min_color = "FF" + min.lstrip("#")
-            max_color = "FF" + max.lstrip("#")
+            min_color = "FF" + min.lstrip("#")  # type: ignore[union-attr]
+            max_color = "FF" + max.lstrip("#")  # type: ignore[union-attr]
             if mid is not None:
                 mid_color = "FF" + mid.lstrip("#")
                 rule_obj = ColorScaleRule(
@@ -315,7 +315,7 @@ def add(
             font_kwargs = _parse_style_string(style) if style else {}
             rule_obj = Rule(type="expression", formula=[formula])
             if font_kwargs:
-                rule_obj.font = openpyxl.styles.Font(**font_kwargs)
+                rule_obj.font = openpyxl.styles.Font(**font_kwargs)  # type: ignore[attr-defined]
             ws.conditional_formatting.add(range, rule_obj)
             typer.echo(
                 f"Added formula conditional formatting to range {range} on sheet '{sheet}'"
@@ -333,23 +333,23 @@ def add(
                 "equal": "equal",
                 "contains": "containsText",
             }
-            operator = operator_map[rule]
+            operator = operator_map[rule]  # type: ignore[index]
 
             if rule == "between":
                 # For between, value should be two values separated by comma
-                if "," not in value:
+                if "," not in value:  # type: ignore[operator]
                     typer.secho(
                         "Error: --value for 'between' must be two values separated by comma (e.g., '10,100').",
                         fg=typer.colors.RED,
                         err=True,
                     )
                     raise typer.Exit(code=int(ErrorCode.INVALID_FORMULA_SYNTAX))
-                parts = value.split(",")
+                parts = value.split(",")  # type: ignore[union-attr]
                 formula1 = parts[0].strip()
                 formula2 = parts[1].strip()
                 rule_obj = Rule(
                     type="cellIs",
-                    operator=operator,
+                    operator=operator,  # type: ignore[arg-type]
                     formula=[formula1, formula2],
                 )
             elif rule == "contains":
@@ -372,12 +372,12 @@ def add(
                 formula2 = None
                 rule_obj = Rule(
                     type="cellIs",
-                    operator=operator,
+                    operator=operator,  # type: ignore[arg-type]
                     formula=[formula1],
                 )
 
             if font_kwargs:
-                rule_obj.font = openpyxl.styles.Font(**font_kwargs)
+                rule_obj.font = openpyxl.styles.Font(**font_kwargs)  # type: ignore[attr-defined]
 
             ws.conditional_formatting.add(range, rule_obj)
             typer.echo(f"Added {rule} rule to range {range} on sheet '{sheet}'")

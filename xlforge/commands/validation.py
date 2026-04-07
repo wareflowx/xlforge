@@ -89,7 +89,7 @@ def add(
         ws = wb[sheet]
 
         # Create data validation
-        dv = openpyxl.worksheet.datavalidation.DataValidation(
+        dv = openpyxl.worksheet.datavalidation.DataValidation(  # type: ignore[attr-defined]
             type=type_lower,
             formula1=formula1,
             formula2=formula2,

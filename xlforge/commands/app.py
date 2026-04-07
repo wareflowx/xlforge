@@ -36,7 +36,7 @@ def _get_xlwings_app(path: Path) -> Any:
             message=f"File not found: {path}",
         )
 
-    import xlwings as xw
+    import xlwings as xw  # type: ignore[import-not-found]
 
     # Open workbook with xlwings
     wb = xw.Book(path)

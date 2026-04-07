@@ -264,11 +264,8 @@ def _create_pivot_chart(
 
     xl_chart_type = xl_chart_types[chart_type_lower]
 
-    # Check if file is open in Excel
-    is_blocked, error_msg = _check_file_not_open_in_excel(path)
-    if is_blocked:
-        typer.secho(f"Error: {error_msg}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=int(ErrorCode.FILE_IN_USE))
+    # Note: We don't check for file open in Excel here because win32com's
+    # Dispatch("Excel.Application") can connect to an already-open instance
 
     excel = None
     try:

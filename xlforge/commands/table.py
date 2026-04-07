@@ -15,7 +15,6 @@ import typer
 from openpyxl.worksheet.table import Table
 
 from xlforge.core.errors import ErrorCode
-from xlforge.core.utils import _check_file_not_open_in_excel
 
 table_app = typer.Typer(help="Table operations for Excel workbooks.")
 
@@ -121,11 +120,8 @@ def _create_native_table(
         )
         raise typer.Exit(code=int(ErrorCode.FEATURE_UNAVAILABLE))
 
-    # Check if file is open in Excel
-    is_blocked, error_msg = _check_file_not_open_in_excel(path)
-    if is_blocked:
-        typer.secho(f"Error: {error_msg}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=int(ErrorCode.FILE_IN_USE))
+    # Note: We don't check for file open in Excel here because win32com's
+    # Dispatch("Excel.Application") can connect to an already-open instance
 
     excel = None
     try:

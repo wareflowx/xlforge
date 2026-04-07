@@ -176,11 +176,8 @@ def create(
         )
         raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
 
-    # Check if file is open in Excel
-    is_blocked, error_msg = _check_file_not_open_in_excel(path)
-    if is_blocked:
-        typer.secho(f"Error: {error_msg}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=int(ErrorCode.FILE_IN_USE))
+    # Note: We don't check for file open in Excel here because win32com's
+    # Dispatch("Excel.Application") can connect to an already-open instance
 
     # Determine target sheet
     target_sheet = sheet if sheet else f"{source_sheet}_Pivot"
@@ -553,11 +550,8 @@ def refresh(
         )
         raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
 
-    # Check if file is open in Excel
-    is_blocked, error_msg = _check_file_not_open_in_excel(path)
-    if is_blocked:
-        typer.secho(f"Error: {error_msg}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=int(ErrorCode.FILE_IN_USE))
+    # Note: We don't check for file open in Excel here because win32com's
+    # Dispatch("Excel.Application") can connect to an already-open instance
 
     excel = None
     try:

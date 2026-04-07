@@ -223,7 +223,7 @@ def create(
         excel = win32com.client.Dispatch("Excel.Application")
         excel.Visible = False
         excel.DisplayAlerts = False
-        wb_com = excel.Workbooks.Open(str(path.absolute()))
+        wb_com = excel.Workbooks.Open(str(path))
 
         # Get source sheet
         try:
@@ -506,3 +506,112 @@ def delete(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=int(ErrorCode.PIVOT_CREATION_FAILED))
+
+
+@pivot_app.command()
+def refresh(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    sheet: Annotated[
+        Optional[str],
+        typer.Option("--sheet", "-s", help="Sheet name containing the pivot table."),
+    ] = None,
+    name: Annotated[
+        Optional[str],
+        typer.Option("--name", "-n", help="Name of the pivot table to refresh."),
+    ] = None,
+) -> None:
+    """Refresh a pivot table to update its data from the source.
+
+    Uses Excel's native API via win32com to refresh pivot table data.
+    Requires Excel to be installed.
+    """
+    if not _is_xlwings_available():
+        typer.secho(
+            "Error: Pivot table operations require Excel via xlwings engine.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        typer.secho(
+            "Feature unavailable in headless mode (openpyxl only).",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FEATURE_UNAVAILABLE))
+
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    excel = None
+    try:
+        import win32com.client
+
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        wb_com = excel.Workbooks.Open(str(path))
+
+        # Find the pivot table
+        pivot_found = False
+        target_sheet = None
+        target_pivot = None
+
+        # Get list of sheets to check
+        if sheet:
+            sheets_to_check = [wb_com.Sheets(sheet)]
+        else:
+            # Iterate all sheets - need to convert to list first
+            sheets_to_check = [wb_com.Sheets.Item(i) for i in range(1, wb_com.Sheets.Count + 1)]
+
+        for ws in sheets_to_check:
+            try:
+                pivots = ws.PivotTables()
+                for i in range(1, pivots.Count + 1):
+                    pt = pivots.Item(i)
+                    if name is None or pt.Name == name:
+                        target_sheet = ws
+                        target_pivot = pt
+                        pivot_found = True
+                        break
+                if pivot_found:
+                    break
+            except Exception:
+                continue
+
+        if not pivot_found:
+            if name:
+                typer.secho(
+                    f"Error: Pivot table '{name}' not found",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+            else:
+                typer.secho(
+                    f"Error: No pivot tables found in workbook",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+            raise typer.Exit(code=int(ErrorCode.PIVOT_REFRESH_FAILED))
+
+        # Refresh the pivot table
+        target_pivot.RefreshTable()
+
+        # Save sheet name before closing (COM objects become invalid after close)
+        sheet_name = target_sheet.Name
+
+        # Save and close workbook
+        wb_com.Save()
+        wb_com.Close()
+        excel.Quit()
+
+        typer.echo(f"Refreshed pivot table in sheet '{sheet_name}'")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.PIVOT_REFRESH_FAILED))

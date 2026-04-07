@@ -125,6 +125,7 @@ class ErrorCode(IntEnum):
     PARENT_CELL_VALIDATION_NOT_FOUND = 114
     CIRCULAR_DEPENDENCY_IN_VALIDATION = 115
     VALIDATION_RANGE_TOO_LARGE = 116
+    PIVOT_NOT_FOUND = 117
 
     # Watcher errors (120-127)
     WATCHER_ALREADY_ACTIVE = 120
@@ -233,6 +234,7 @@ ERROR_MESSAGES: dict[int, str] = {
     ErrorCode.PARENT_CELL_VALIDATION_NOT_FOUND: "Parent cell validation not found",
     ErrorCode.CIRCULAR_DEPENDENCY_IN_VALIDATION: "Circular dependency in dependent validation",
     ErrorCode.VALIDATION_RANGE_TOO_LARGE: "Validation range is too large",
+    ErrorCode.PIVOT_NOT_FOUND: "Pivot table not found",
     # Watcher errors
     ErrorCode.WATCHER_ALREADY_ACTIVE: "Watcher already active for this file",
     ErrorCode.NO_ACTIVE_WATCHER: "No active watcher to stop",

@@ -2,9 +2,11 @@
 
 # Note: This command uses openpyxl directly and bypasses the Engine abstraction.
 # It works with OpenpyxlEngine but not with XlwingsEngine.
+# For native Excel tables with auto-expand behavior, use the --native flag with win32com.
 
 from __future__ import annotations
 
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Annotated
 
@@ -15,6 +17,14 @@ from openpyxl.worksheet.table import Table
 from xlforge.core.errors import ErrorCode
 
 table_app = typer.Typer(help="Table operations for Excel workbooks.")
+
+# Excel ListObject SourceType constants
+_XL_SRC_RANGE = 1
+
+
+def _is_xlwings_available() -> bool:
+    """Check if xlwings is available (Excel integration possible)."""
+    return find_spec("xlwings") is not None
 
 
 def _validate_table_name(name: str) -> bool:
@@ -28,32 +38,13 @@ def _validate_table_name(name: str) -> bool:
     return not any(c in invalid_chars for c in name)
 
 
-@table_app.command()
-def create(
-    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
-    sheet: Annotated[str, typer.Argument(help="Sheet name containing the range.")],
-    range_ref: Annotated[str, typer.Argument(help="Range reference (e.g., A1:C10).")],
-    name: Annotated[str | None, typer.Option("--name", "-n", help="Name for the table.")] = None,
+def _create_openpyxl_table(
+    path: Path,
+    sheet: str,
+    range_ref: str,
+    name: str | None,
 ) -> None:
-    """Create an Excel table from a range."""
-    # Check if file exists
-    if not path.exists():
-        typer.secho(
-            f"Error: File does not exist: {path}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
-
-    # Validate table name if provided
-    if name and not _validate_table_name(name):
-        typer.secho(
-            f"Error: Invalid table name: {name}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=int(ErrorCode.INVALID_TABLE_NAME))
-
+    """Create a table using openpyxl (no auto-expand behavior)."""
     try:
         wb = openpyxl.load_workbook(path)
 
@@ -103,6 +94,132 @@ def create(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=int(ErrorCode.GENERAL_ERROR))
+
+
+def _create_native_table(
+    path: Path,
+    sheet: str,
+    range_ref: str,
+    name: str | None,
+) -> None:
+    """Create a native Excel table using win32com (with auto-expand behavior).
+
+    Native Excel tables (ListObjects) automatically expand when data is added
+    below the table.
+    """
+    if not _is_xlwings_available():
+        typer.secho(
+            "Error: Native table creation requires Excel via win32com.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        typer.secho(
+            "Use openpyxl mode (without --native) or install xlwings.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FEATURE_UNAVAILABLE))
+
+    excel = None
+    try:
+        import win32com.client
+
+        # Use win32com directly to create native Excel table
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        wb_com = excel.Workbooks.Open(str(path.absolute()))
+
+        # Get the sheet
+        try:
+            ws = wb_com.Sheets(sheet)
+        except Exception:
+            typer.secho(
+                f"Error: Sheet not found: {sheet}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
+
+        # Get the range
+        try:
+            rng = ws.Range(range_ref)
+        except Exception:
+            typer.secho(
+                f"Error: Invalid range: {range_ref}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.INVALID_SYNTAX))
+
+        # Create the table using ListObjects.Add
+        # SourceType=1 (xlSrcRange) means the table is based on a range
+        list_objects = ws.ListObjects
+        tbl = list_objects.Add(1, rng)
+
+        # Set the table name if provided
+        if name:
+            tbl.Name = name
+
+        # Save and close workbook
+        wb_com.Save()
+        wb_com.Close()
+
+        table_name = name if name else tbl.Name
+        typer.echo(f"Created native Excel table '{table_name}' at {range_ref} in sheet '{sheet}'")
+        typer.echo("Note: Native Excel tables auto-expand when data is added below.")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.GENERAL_ERROR))
+    finally:
+        if excel is not None:
+            try:
+                excel.Quit()
+            except Exception:
+                pass
+
+
+@table_app.command()
+def create(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    sheet: Annotated[str, typer.Argument(help="Sheet name containing the range.")],
+    range_ref: Annotated[str, typer.Argument(help="Range reference (e.g., A1:C10).")],
+    name: Annotated[str | None, typer.Option("--name", "-n", help="Name for the table.")] = None,
+    native: Annotated[
+        bool,
+        typer.Option("--native", help="Use native Excel tables via win32com (requires Excel installed)."),
+    ] = False,
+) -> None:
+    """Create an Excel table from a range.
+
+    Use --native to create native Excel ListObjects with auto-expand behavior.
+    Native tables require Excel to be installed.
+    """
+    # Check if file exists
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    # Validate table name if provided
+    if name and not _validate_table_name(name):
+        typer.secho(
+            f"Error: Invalid table name: {name}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.INVALID_TABLE_NAME))
+
+    if native:
+        _create_native_table(path, sheet, range_ref, name)
+    else:
+        _create_openpyxl_table(path, sheet, range_ref, name)
 
 
 @table_app.command("list")

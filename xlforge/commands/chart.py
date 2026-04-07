@@ -103,57 +103,23 @@ def _parse_range(range_str: str) -> tuple[int, int, int, int]:
     return min_col, min_row, max_col, max_row
 
 
-@chart_app.command()
-def create(
-    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
-    sheet: Annotated[str, typer.Argument(help="Sheet name containing the data.")],
-    range: Annotated[str, typer.Argument(help="Data range for the chart (e.g., A1:D10).")],
-    type: Annotated[
-        str,
-        typer.Option("--type", "-t", help=f"Chart type: {', '.join(CHART_TYPES.keys())}."),
-    ],
-    name: Annotated[
-        Optional[str],
-        typer.Option("--name", "-n", help="Name for the chart."),
-    ] = None,
+def _create_regular_chart(
+    path: Path,
+    sheet: str,
+    range: str,
+    chart_type: str,
+    name: Optional[str],
 ) -> None:
-    """Create a chart in a sheet."""
-    # Check if xlwings is available (chart operations require Excel)
-    if not _is_xlwings_available():
-        typer.secho(
-            "Error: Chart operations require Excel via xlwings engine.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        typer.secho(
-            "Feature unavailable in headless mode (openpyxl only).",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=int(ErrorCode.FEATURE_UNAVAILABLE))
+    """Create a regular chart using openpyxl.
 
-    if not path.exists():
-        typer.secho(
-            f"Error: File does not exist: {path}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
-
-    # Validate chart type
-    chart_type_lower = type.lower()
-    if chart_type_lower not in CHART_TYPES:
-        typer.secho(
-            f"Error: Invalid chart type: {type}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        typer.secho(
-            f"Valid types: {', '.join(CHART_TYPES.keys())}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=int(ErrorCode.INVALID_CHART_TYPE))
+    Args:
+        path: Path to the workbook file.
+        sheet: Sheet name containing the data.
+        range: Data range for the chart (e.g., A1:D10).
+        chart_type: Type of chart to create.
+        name: Optional name for the chart.
+    """
+    chart_type_lower = chart_type.lower()
 
     try:
         # Load workbook directly with openpyxl for chart operations
@@ -243,6 +209,217 @@ def create(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+def _create_pivot_chart(
+    path: Path,
+    sheet: str,
+    range: str,
+    chart_type: str,
+    name: Optional[str],
+    pivot_name: str,
+) -> None:
+    """Create a PivotChart linked to a pivot table using win32com.
+
+    When a chart is created on the same sheet as a pivot table with its
+    SetSourceData pointing to the pivot's TableRange1, Excel automatically
+    links it via the PivotLayout property for dynamic updates.
+
+    Args:
+        path: Path to the workbook file.
+        sheet: Sheet name containing the pivot table.
+        range: Not used for pivot charts (data range comes from pivot).
+        chart_type: Type of chart to create.
+        name: Optional name for the chart.
+        pivot_name: Name of the pivot table to link to.
+    """
+    chart_type_lower = chart_type.lower()
+
+    # Map chart types to Excel enum values
+    # Excel XlChartType enum values
+    xl_chart_types = {
+        "column": 51,   # xlColumnClustered
+        "bar": 57,     # xlBarClustered
+        "line": 4,     # xlLine
+        "pie": 5,      # xlPie
+        "scatter": -4169,  # xlXYScatter
+        "area": 1,     # xlArea
+        "radar": -4151,  # xlRadar
+        "doughnut": 20,  # xlDoughnut
+    }
+
+    if chart_type_lower not in xl_chart_types:
+        typer.secho(
+            f"Error: Invalid chart type for pivot chart: {chart_type}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        typer.secho(
+            f"Valid types: {', '.join(xl_chart_types.keys())}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.INVALID_CHART_TYPE))
+
+    xl_chart_type = xl_chart_types[chart_type_lower]
+
+    excel = None
+    try:
+        import win32com.client
+
+        # Use win32com directly for pivot chart creation
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        wb_com = excel.Workbooks.Open(str(path.absolute()))
+
+        # Get the sheet
+        try:
+            ws_com = wb_com.Sheets(sheet)
+        except Exception:
+            typer.secho(
+                f"Error: Sheet not found: {sheet}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
+
+        # Find the pivot table by name
+        pivot_table = None
+        for pt in ws_com.PivotTables():
+            if pt.Name == pivot_name:
+                pivot_table = pt
+                break
+
+        if pivot_table is None:
+            typer.secho(
+                f"Error: Pivot table '{pivot_name}' not found in sheet '{sheet}'",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=int(ErrorCode.PIVOT_NOT_FOUND))
+
+        # Get the pivot table's data range
+        pivot_range = pivot_table.TableRange1
+
+        # Determine chart position (to the right of the pivot table)
+        pivot_right = pivot_table.TableRange1.Address
+        # Parse the column letter from the right edge of pivot range
+        from openpyxl.utils import column_index_from_string, get_column_letter
+        # Get column after pivot range's right edge
+        last_col = pivot_table.TableRange1.Column + pivot_table.TableRange1.Columns.Count - 1
+        anchor_col = get_column_letter(last_col + 2)
+        anchor_row = pivot_table.TableRange1.Row
+        anchor_cell = f"{anchor_col}{anchor_row}"
+
+        # Create a chart on the sheet using the pivot table's data range
+        # This automatically links it to the pivot via PivotLayout
+        chart_object = ws_com.ChartObjects().Add(
+            Left=pivot_table.TableRange1.Left + pivot_table.TableRange1.Width + 20,
+            Top=pivot_table.TableRange1.Top,
+            Width=300,
+            Height=200,
+        )
+        chart = chart_object.Chart
+
+        # Set chart type
+        chart.ChartType = xl_chart_type
+
+        # Set source data to the pivot table's range - this links it to the pivot
+        chart.SetSourceData(pivot_range)
+
+        # Set chart title
+        if name:
+            chart.HasTitle = True
+            chart.ChartTitle.Text = name
+
+        # Save the workbook
+        wb_com.Save()
+        wb_com.Close()
+
+        chart_label = name or f"PivotChart ({pivot_name})"
+        typer.echo(f"Created PivotChart '{chart_label}' linked to pivot table '{pivot_name}' in {path} ({sheet})")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    finally:
+        # Clean up COM objects
+        if excel is not None:
+            try:
+                excel.Quit()
+            except Exception:
+                pass
+
+
+@chart_app.command()
+def create(
+    path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
+    sheet: Annotated[str, typer.Argument(help="Sheet name containing the data.")],
+    range: Annotated[str, typer.Argument(help="Data range for the chart (e.g., A1:D10).")],
+    type: Annotated[
+        str,
+        typer.Option("--type", "-t", help=f"Chart type: {', '.join(CHART_TYPES.keys())}."),
+    ],
+    name: Annotated[
+        Optional[str],
+        typer.Option("--name", "-n", help="Name for the chart."),
+    ] = None,
+    pivot: Annotated[
+        Optional[str],
+        typer.Option("--pivot", "-p", help="Name of the pivot table to link the chart to (creates a PivotChart)."),
+    ] = None,
+) -> None:
+    """Create a chart in a sheet.
+
+    When --pivot is specified, creates a PivotChart linked to the specified
+    pivot table. The chart will automatically update when the pivot is refreshed.
+    This requires Excel via win32com.
+    """
+    # Check if xlwings is available (chart operations require Excel)
+    if not _is_xlwings_available():
+        typer.secho(
+            "Error: Chart operations require Excel via xlwings engine.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        typer.secho(
+            "Feature unavailable in headless mode (openpyxl only).",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FEATURE_UNAVAILABLE))
+
+    if not path.exists():
+        typer.secho(
+            f"Error: File does not exist: {path}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    # Validate chart type
+    chart_type_lower = type.lower()
+    if chart_type_lower not in CHART_TYPES:
+        typer.secho(
+            f"Error: Invalid chart type: {type}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        typer.secho(
+            f"Valid types: {', '.join(CHART_TYPES.keys())}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.INVALID_CHART_TYPE))
+
+    # If pivot option is specified, use win32com to create a true PivotChart
+    if pivot:
+        _create_pivot_chart(path, sheet, range, type, name, pivot)
+    else:
+        _create_regular_chart(path, sheet, range, type, name)
 
 
 @chart_app.command()

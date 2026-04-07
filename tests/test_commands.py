@@ -963,8 +963,7 @@ class TestCsvImport:
             xlsx_path = os.path.join(tmpdir, "test.xlsx")
 
             # Create empty CSV file
-            with open(csv_path, "w") as f:
-                pass
+            open(csv_path, "w").close()
 
             with unittest.mock.patch(
                 "xlforge.core.engines.selector.find_spec", return_value=None

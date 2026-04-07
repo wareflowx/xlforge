@@ -148,7 +148,6 @@ def remove(
         ws = wb[sheet]
 
         # Find and remove the validation for this range
-        initial_count = len(ws.data_validations.dataValidation)
         removed = False
 
         # We need to filter out validations that overlap with the given range

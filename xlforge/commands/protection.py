@@ -8,7 +8,7 @@ from typing import Annotated
 import openpyxl
 import typer
 
-from xlforge.core.errors import ErrorCode
+from xlforge.core.errors import ErrorCode, XlforgeError
 
 protection_app = typer.Typer(help="Sheet protection and freeze pane operations.")
 
@@ -183,7 +183,3 @@ def freeze(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=int(ErrorCode.GENERAL_ERROR))
-
-
-# Import XlforgeError for proper error handling
-from xlforge.core.errors import XlforgeError

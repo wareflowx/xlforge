@@ -18,10 +18,8 @@ from openpyxl.chart import (
     Reference,
     ScatterChart,
 )
-from openpyxl.chart.series import SeriesLabel
 
-from xlforge.core.errors import ErrorCode
-from xlforge.core.utils import _check_file_not_open_in_excel
+from xlforge.core.errors import ErrorCode, XlforgeError
 
 chart_app = typer.Typer(help="Chart operations for Excel workbooks.")
 
@@ -75,7 +73,7 @@ def _parse_range(range_str: str) -> tuple[int, int, int, int]:
     Returns:
         Tuple of (min_col, min_row, max_col, max_row) as 1-indexed integers.
     """
-    from openpyxl.utils import column_index_from_string, get_column_letter
+    from openpyxl.utils import column_index_from_string
 
     parts = range_str.split(":")
     if len(parts) != 2:
@@ -311,19 +309,6 @@ def _create_pivot_chart(
 
         # Get the pivot table's data range
         pivot_range = pivot_table.TableRange1
-
-        # Determine chart position (to the right of the pivot table)
-        pivot_right = pivot_table.TableRange1.Address
-        # Parse the column letter from the right edge of pivot range
-        from openpyxl.utils import column_index_from_string, get_column_letter
-
-        # Get column after pivot range's right edge
-        last_col = (
-            pivot_table.TableRange1.Column + pivot_table.TableRange1.Columns.Count - 1
-        )
-        anchor_col = get_column_letter(last_col + 2)
-        anchor_row = pivot_table.TableRange1.Row
-        anchor_cell = f"{anchor_col}{anchor_row}"
 
         # Create a chart on the sheet using the pivot table's data range
         # This automatically links it to the pivot via PivotLayout
@@ -599,7 +584,3 @@ def list(
     except Exception as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
-
-
-# Import XlforgeError at module level for exception handling
-from xlforge.core.errors import XlforgeError

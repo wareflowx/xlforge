@@ -10,7 +10,6 @@ import openpyxl
 import typer
 
 from xlforge.core.errors import ErrorCode
-from xlforge.core.utils import _check_file_not_open_in_excel
 
 pivot_app = typer.Typer(help="Pivot table operations for Excel workbooks.")
 
@@ -234,10 +233,7 @@ def create(
     filter_fields = [f.strip() for f in filters.split(",")] if filters else []
 
     # Generate pivot table name if not provided
-    pivot_name = name if name else f"PivotTable1"
-
-    # Get source range address string
-    source_ref = _cell_range_to_excel_ref(min_col, min_row, max_col, max_row)
+    pivot_name = name if name else "PivotTable1"
 
     excel = None
     try:
@@ -622,7 +618,7 @@ def refresh(
                 )
             else:
                 typer.secho(
-                    f"Error: No pivot tables found in workbook",
+                    "Error: No pivot tables found in workbook",
                     fg=typer.colors.RED,
                     err=True,
                 )

@@ -175,8 +175,6 @@ def export(
                 )
                 raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
 
-            sheet_obj = workbook.sheet(name=sheet)
-
             # Determine range
             if range_spec:
                 coord_range = range_spec

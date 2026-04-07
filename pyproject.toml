@@ -25,3 +25,6 @@ dev = [
     "types-openpyxl>=3.1.0",
     "pytest-cov>=7.1.0",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"xlforge/commands/rowcol.py" = ["F811"]

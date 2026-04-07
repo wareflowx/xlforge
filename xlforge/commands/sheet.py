@@ -110,7 +110,7 @@ def delete(
                 )
                 raise typer.Exit(code=int(ErrorCode.CANNOT_DELETE_LAST_SHEET))
             typer.secho(
-                f"Warning: Deleting last sheet. Workbook will become empty.",
+                "Warning: Deleting last sheet. Workbook will become empty.",
                 fg=typer.colors.YELLOW,
                 err=True,
             )

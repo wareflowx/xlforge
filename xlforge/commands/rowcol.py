@@ -127,7 +127,7 @@ def unhide(
         raise typer.Exit(code=1)
 
 
-@col_app.command()  # type: ignore[no-redef]
+@col_app.command()  # type: ignore[no-redef]  # noqa: F811
 def hide(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name.")],
@@ -175,7 +175,7 @@ def hide(
         raise typer.Exit(code=1)
 
 
-@col_app.command()  # type: ignore[no-redef]
+@col_app.command()  # type: ignore[no-redef]  # noqa: F811
 def unhide(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name.")],
@@ -334,7 +334,7 @@ def auto(
         raise typer.Exit(code=1)
 
 
-@col_app.command()  # type: ignore[no-redef]
+@col_app.command()  # type: ignore[no-redef]  # noqa: F811
 def width(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name.")],
@@ -383,7 +383,7 @@ def width(
         raise typer.Exit(code=1)
 
 
-@col_app.command()  # type: ignore[no-redef]
+@col_app.command()  # type: ignore[no-redef]  # noqa: F811
 def auto(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name.")],

@@ -264,14 +264,17 @@ def create(
             ws_tgt = wb_com.Sheets.Add()
             ws_tgt.Name = target_sheet
 
-        # Source range as Range object
+        # Source range as string (properly handle Unicode column names)
         # Use max row of 100 to allow data expansion (new rows will be picked up on refresh)
         max_row_for_pivot = max(max_row, 100)
-        source_range = ws_src.Range(f"A{min_row}:C{max_row_for_pivot}")
+        # Build source data string with proper Unicode handling
+        # Single quotes around sheet name handle special characters in sheet names
+        source_data_str = f"'{source_sheet}'!A{min_row}:C{max_row_for_pivot}"
 
         # Create pivot table using PivotTableWizard method on target sheet
         # This is more reliable than PivotTables.Add() with COM
-        pivot_table = ws_tgt.PivotTableWizard(SourceType=1, SourceData=source_range)
+        # Pass string reference instead of COM object to properly handle Unicode field names
+        pivot_table = ws_tgt.PivotTableWizard(SourceType=1, SourceData=source_data_str)
 
         if not pivot_table:
             raise Exception("Failed to create pivot table")

@@ -1,5 +1,6 @@
 import typer
 
+from xlforge.commands.app import app_cmd
 from xlforge.commands.cell import cell_app
 from xlforge.commands.chart import chart_app
 from xlforge.commands.context import context_app
@@ -18,6 +19,7 @@ from xlforge.commands.table import table_app
 from xlforge.commands.validation import validation_app
 
 app = typer.Typer()
+app.add_typer(app_cmd, name="app")
 app.add_typer(cell_app, name="cell")
 app.add_typer(chart_app, name="chart")
 app.add_typer(col_app, name="column")

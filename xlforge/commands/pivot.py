@@ -245,7 +245,9 @@ def create(
             ws_tgt.Name = target_sheet
 
         # Source range as Range object
-        source_range = ws_src.Range(source_ref)
+        # Use max row of 100 to allow data expansion (new rows will be picked up on refresh)
+        max_row_for_pivot = max(max_row, 100)
+        source_range = ws_src.Range(f"A{min_row}:C{max_row_for_pivot}")
 
         # Create pivot table using PivotTableWizard method on target sheet
         # This is more reliable than PivotTables.Add() with COM

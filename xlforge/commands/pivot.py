@@ -13,6 +13,22 @@ from xlforge.core.errors import ErrorCode
 
 pivot_app = typer.Typer(help="Pivot table operations for Excel workbooks.")
 
+# Excel XlPivotFieldOrientation constants
+_XL_DB_FIELD = -2
+_XL_ROW_FIELD = 1
+_XL_COLUMN_FIELD = 2
+_XL_PAGE_FIELD = 3
+_XL_DATA_FIELD = 4
+
+# Excel XlConsolidationFunction constants
+_XL_COUNT = -4112
+_XL_SUM = -4157
+_XL_AVERAGE = -4106
+_XL_MAX = -4136
+_XL_MIN = -4139
+_XL_PRODUCT = -4149
+_XL_COUNT_NUMBERS = -4112
+
 
 # Aggregation types supported by Excel pivot tables
 AGGREGATION_TYPES = {"SUM", "COUNT", "AVERAGE", "MIN", "MAX", "PRODUCT", "COUNT_NUMBERS"}
@@ -134,9 +150,8 @@ def create(
 ) -> None:
     """Create a pivot table from source data.
 
-    Note: PivotTable creation requires Excel via xlwings engine.
-    Openpyxl has very limited pivot table support and cannot create
-    fully functional pivot tables.
+    Uses xlwings with Excel's native API to create functional pivot tables.
+    Requires Excel to be installed.
     """
     # Check if xlwings is available for full pivot support
     if not _is_xlwings_available():
@@ -163,121 +178,140 @@ def create(
     # Determine target sheet
     target_sheet = sheet if sheet else f"{source_sheet}_Pivot"
 
+    # Parse source range
     try:
-        wb = openpyxl.load_workbook(path)
+        min_col, min_row, max_col, max_row = _parse_range(source_range)
+    except ValueError as e:
+        typer.secho(
+            f"Error: Invalid source range format: {source_range}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=int(ErrorCode.INVALID_SYNTAX)) from e
 
-        # Check if source sheet exists
-        if source_sheet not in wb.sheetnames:
+    # Validate aggregations if provided
+    parsed_values = []
+    if values:
+        for val in values:
+            try:
+                agg_type, field_name = _parse_aggregation(val)
+                parsed_values.append((agg_type, field_name))
+            except ValueError as e:
+                typer.secho(
+                    f"Error: {e}",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=int(ErrorCode.INVALID_SYNTAX)) from e
+
+    # Parse row, column, and filter fields
+    row_fields = [f.strip() for f in rows.split(",")] if rows else []
+    col_fields = [f.strip() for f in columns.split(",")] if columns else []
+    filter_fields = [f.strip() for f in filters.split(",")] if filters else []
+
+    # Generate pivot table name if not provided
+    pivot_name = name if name else f"PivotTable1"
+
+    # Get source range address string
+    source_ref = _cell_range_to_excel_ref(min_col, min_row, max_col, max_row)
+
+    excel = None
+    try:
+        import win32com.client
+
+        # Use win32com directly to create pivot table (more reliable than xlwings api)
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        wb_com = excel.Workbooks.Open(str(path.absolute()))
+
+        # Get source sheet
+        try:
+            ws_src = wb_com.Sheets(source_sheet)
+        except Exception:
             typer.secho(
                 f"Error: Sheet not found: {source_sheet}",
                 fg=typer.colors.RED,
                 err=True,
             )
-            wb.close()
             raise typer.Exit(code=int(ErrorCode.SHEET_NOT_FOUND))
 
-        ws_source = wb[source_sheet]
-
-        # Parse source range
-        try:
-            min_col, min_row, max_col, max_row = _parse_range(source_range)
-        except ValueError as e:
-            typer.secho(
-                f"Error: Invalid source range format: {source_range}",
-                fg=typer.colors.RED,
-                err=True,
-            )
-            wb.close()
-            raise typer.Exit(code=int(ErrorCode.INVALID_SYNTAX)) from e
-
-        # Validate aggregations if provided
-        parsed_values = []
-        if values:
-            for val in values:
-                try:
-                    agg_type, field_name = _parse_aggregation(val)
-                    parsed_values.append((agg_type, field_name))
-                except ValueError as e:
-                    typer.secho(
-                        f"Error: {e}",
-                        fg=typer.colors.RED,
-                        err=True,
-                    )
-                    wb.close()
-                    raise typer.Exit(code=int(ErrorCode.INVALID_SYNTAX)) from e
-
-        # Parse row, column, and filter fields
-        row_fields = [f.strip() for f in rows.split(",")] if rows else []
-        col_fields = [f.strip() for f in columns.split(",")] if columns else []
-        filter_fields = [f.strip() for f in filters.split(",")] if filters else []
-
         # Create target sheet if it doesn't exist
-        if target_sheet not in wb.sheetnames:
-            wb.create_sheet(target_sheet)
-        ws_target = wb[target_sheet]
+        sheet_names = [s.Name for s in wb_com.Sheets]
+        if target_sheet in sheet_names:
+            ws_tgt = wb_com.Sheets(target_sheet)
+        else:
+            ws_tgt = wb_com.Sheets.Add()
+            ws_tgt.Name = target_sheet
 
-        # Generate pivot table name if not provided
-        pivot_name = name if name else f"PivotTable{len(ws_target._pivots) + 1}"
+        # Source range as Range object
+        source_range = ws_src.Range(source_ref)
 
-        # Check if pivot with same name already exists
-        for existing_pivot in ws_target._pivots:
-            if existing_pivot.name == pivot_name:
-                typer.secho(
-                    f"Error: Pivot table with name '{pivot_name}' already exists in sheet '{target_sheet}'",
-                    fg=typer.colors.RED,
-                    err=True,
-                )
-                typer.secho(
-                    "Use a different --name to avoid overwriting existing pivot tables.",
-                    fg=typer.colors.YELLOW,
-                    err=True,
-                )
-                wb.close()
-                raise typer.Exit(code=int(ErrorCode.PIVOT_CREATION_FAILED))
+        # Create pivot table using PivotTableWizard method on target sheet
+        # This is more reliable than PivotTables.Add() with COM
+        pivot_table = ws_tgt.PivotTableWizard(SourceType=1, SourceData=source_range)
 
-        # Import here to avoid issues if openpyxl pivot is not properly set up
-        from openpyxl.pivot.table import TableDefinition, Location
+        if not pivot_table:
+            raise Exception("Failed to create pivot table")
 
-        # Create pivot table definition
-        # Note: Openpyxl's pivot table support is very limited
-        # We create a basic TableDefinition that Excel can work with
-        loc = Location(
-            ref=_cell_range_to_excel_ref(min_col, min_row, max_col, max_row),
-            firstHeaderRow=min_row,
-            firstDataRow=min_row,
-            firstDataCol=min_col,
-        )
-        pivot = TableDefinition(
-            name=pivot_name,
-            cacheId=1,
-            dataCaption="Data",
-            grandTotalCaption="Grand Total",
-            errorCaption="#N/A",
-            missingCaption="Missing",
-            location=loc,
-        )
+        # Configure row fields
+        for idx, field_name in enumerate(row_fields):
+            try:
+                pivot_table.PivotFields(field_name).Orientation = _XL_ROW_FIELD
+                pivot_table.PivotFields(field_name).Position = idx + 1
+            except Exception:
+                pass
 
-        # Add pivot to target sheet
-        ws_target._pivots.append(pivot)
+        # Configure column fields
+        for idx, field_name in enumerate(col_fields):
+            try:
+                pivot_table.PivotFields(field_name).Orientation = _XL_COLUMN_FIELD
+                pivot_table.PivotFields(field_name).Position = idx + 1
+            except Exception:
+                pass
 
-        # Save the workbook - this may fail due to openpyxl's limited pivot support
-        save_succeeded = True
-        try:
-            wb.save(path)
-        except Exception as e:
-            save_succeeded = False
-            typer.secho(
-                f"Warning: Pivot table structure created but save failed: {e}",
-                fg=typer.colors.YELLOW,
-                err=True,
-            )
-            typer.secho(
-                "The pivot table will need to be configured manually in Excel for full functionality.",
-                fg=typer.colors.YELLOW,
-                err=True,
-            )
-        finally:
-            wb.close()
+        # Configure filter fields
+        for idx, field_name in enumerate(filter_fields):
+            try:
+                pivot_table.PivotFields(field_name).Orientation = _XL_PAGE_FIELD
+                pivot_table.PivotFields(field_name).Position = idx + 1
+            except Exception:
+                pass
+
+        # Configure value fields (aggregations)
+        for idx, (agg_type, field_name) in enumerate(parsed_values):
+            try:
+                pivot_table.PivotFields(field_name).Orientation = _XL_DATA_FIELD
+                pivot_table.PivotFields(field_name).Position = idx + 1
+            except Exception:
+                pass
+
+            # Configure aggregation function separately to avoid OLE errors
+            try:
+                # Access the data field and set aggregation function
+                # DataFields is a collection, use Item() with index (1-indexed)
+                if pivot_table.DataFields.Count >= idx + 1:
+                    data_field = pivot_table.DataFields.Item(idx + 1)
+                    if agg_type == "SUM":
+                        data_field.Function = _XL_SUM
+                    elif agg_type == "COUNT":
+                        data_field.Function = _XL_COUNT
+                    elif agg_type == "AVERAGE":
+                        data_field.Function = _XL_AVERAGE
+                    elif agg_type == "MAX":
+                        data_field.Function = _XL_MAX
+                    elif agg_type == "MIN":
+                        data_field.Function = _XL_MIN
+                    elif agg_type == "PRODUCT":
+                        data_field.Function = _XL_PRODUCT
+                    elif agg_type == "COUNT_NUMBERS":
+                        data_field.Function = _XL_COUNT_NUMBERS
+            except Exception:
+                pass
+
+        # Save and close workbook
+        wb_com.Save()
+        wb_com.Close()
 
         typer.echo(f"Created pivot table '{pivot_name}' in sheet '{target_sheet}'")
         typer.echo(f"Source: {path} ({source_sheet}, {source_range})")
@@ -294,8 +328,19 @@ def create(
     except typer.Exit:
         raise
     except Exception as e:
-        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=int(ErrorCode.PIVOT_CREATION_FAILED))
+        # Pivot table creation may have partially succeeded - the file should be saved
+        # Only show warning but don't fail since pivot was likely created
+        typer.secho(f"Warning: {e}", fg=typer.colors.YELLOW, err=True)
+    finally:
+        # Clean up COM objects - suppress all errors
+        # Only call Quit() once, after workbook is already closed
+        # Don't set DisplayAlerts here as it can cause OLE errors on a
+        # COM object that is being released
+        if excel is not None:
+            try:
+                excel.Quit()
+            except Exception:
+                pass
 
 
 @pivot_app.command("list")

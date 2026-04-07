@@ -10,6 +10,7 @@ import openpyxl
 import typer
 
 from xlforge.core.errors import ErrorCode
+from xlforge.core.utils import _check_file_not_open_in_excel
 
 pivot_app = typer.Typer(help="Pivot table operations for Excel workbooks.")
 
@@ -174,6 +175,12 @@ def create(
             err=True,
         )
         raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    # Check if file is open in Excel
+    is_blocked, error_msg = _check_file_not_open_in_excel(path)
+    if is_blocked:
+        typer.secho(f"Error: {error_msg}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.FILE_IN_USE))
 
     # Determine target sheet
     target_sheet = sheet if sheet else f"{source_sheet}_Pivot"
@@ -545,6 +552,12 @@ def refresh(
             err=True,
         )
         raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))
+
+    # Check if file is open in Excel
+    is_blocked, error_msg = _check_file_not_open_in_excel(path)
+    if is_blocked:
+        typer.secho(f"Error: {error_msg}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=int(ErrorCode.FILE_IN_USE))
 
     excel = None
     try:

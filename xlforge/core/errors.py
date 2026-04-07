@@ -45,6 +45,7 @@ class ErrorCode(IntEnum):
     CHART_NOT_FOUND = 13
     INVALID_CHART_TYPE = 14
     CHART_EXISTS = 15
+    FILE_IN_USE = 16
 
     # Checkpoint errors (20-24)
     CHECKPOINT_NOT_FOUND = 20
@@ -162,6 +163,7 @@ ERROR_MESSAGES: dict[int, str] = {
     ErrorCode.CHART_NOT_FOUND: "Chart not found",
     ErrorCode.INVALID_CHART_TYPE: "Invalid chart type",
     ErrorCode.CHART_EXISTS: "Chart name already exists (use --replace)",
+    ErrorCode.FILE_IN_USE: "File is in use by another application (close Excel first)",
     # Checkpoint errors
     ErrorCode.CHECKPOINT_NOT_FOUND: "Checkpoint not found",
     ErrorCode.CHECKPOINT_RESTORE_FAILED: "Checkpoint restore failed",

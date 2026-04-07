@@ -63,7 +63,7 @@ def _get_chart_title(chart) -> str:
         if hasattr(title, "tx") and hasattr(title.tx, "rich"):
             # Navigate: tx.rich.p[0].r[0].t
             return title.tx.rich.p[0].r[0].t
-    except (AttributeError, IndexError):
+    except AttributeError, IndexError:
         pass
     # Fallback: convert to string
     return str(title)
@@ -177,13 +177,17 @@ def _create_regular_chart(
 
         # Create data reference - series from columns, rows from rows
         # For most charts, first row is category (x-axis), remaining rows are data series
-        data = Reference(ws, min_col=min_col, min_row=min_row, max_col=max_col, max_row=max_row)
+        data = Reference(
+            ws, min_col=min_col, min_row=min_row, max_col=max_col, max_row=max_row
+        )
 
         # Add data to chart - titles_from_data=True means first row contains series names
         chart.add_data(data, titles_from_data=True)
 
         # Set categories (x-axis labels) - typically from first column
-        cats = Reference(ws, min_col=min_col, min_row=min_row + 1, max_col=max_col, max_row=max_row)
+        cats = Reference(
+            ws, min_col=min_col, min_row=min_row + 1, max_col=max_col, max_row=max_row
+        )
         chart.set_categories(cats)
 
         # Set chart title
@@ -201,7 +205,9 @@ def _create_regular_chart(
         wb.close()
 
         chart_name = name or _get_chart_title(chart)
-        typer.echo(f"Created chart '{chart_name}' of type '{chart_type_lower}' in {path} ({sheet})")
+        typer.echo(
+            f"Created chart '{chart_name}' of type '{chart_type_lower}' in {path} ({sheet})"
+        )
 
     except XlforgeError:
         raise
@@ -239,12 +245,12 @@ def _create_pivot_chart(
     # Map chart types to Excel enum values
     # Excel XlChartType enum values
     xl_chart_types = {
-        "column": 51,   # xlColumnClustered
-        "bar": 57,     # xlBarClustered
-        "line": 4,     # xlLine
-        "pie": 5,      # xlPie
+        "column": 51,  # xlColumnClustered
+        "bar": 57,  # xlBarClustered
+        "line": 4,  # xlLine
+        "pie": 5,  # xlPie
         "scatter": -4169,  # xlXYScatter
-        "area": 1,     # xlArea
+        "area": 1,  # xlArea
         "radar": -4151,  # xlRadar
         "doughnut": 20,  # xlDoughnut
     }
@@ -310,8 +316,11 @@ def _create_pivot_chart(
         pivot_right = pivot_table.TableRange1.Address
         # Parse the column letter from the right edge of pivot range
         from openpyxl.utils import column_index_from_string, get_column_letter
+
         # Get column after pivot range's right edge
-        last_col = pivot_table.TableRange1.Column + pivot_table.TableRange1.Columns.Count - 1
+        last_col = (
+            pivot_table.TableRange1.Column + pivot_table.TableRange1.Columns.Count - 1
+        )
         anchor_col = get_column_letter(last_col + 2)
         anchor_row = pivot_table.TableRange1.Row
         anchor_cell = f"{anchor_col}{anchor_row}"
@@ -342,7 +351,9 @@ def _create_pivot_chart(
         wb_com.Close()
 
         chart_label = name or f"PivotChart ({pivot_name})"
-        typer.echo(f"Created PivotChart '{chart_label}' linked to pivot table '{pivot_name}' in {path} ({sheet})")
+        typer.echo(
+            f"Created PivotChart '{chart_label}' linked to pivot table '{pivot_name}' in {path} ({sheet})"
+        )
 
     except typer.Exit:
         raise
@@ -362,10 +373,14 @@ def _create_pivot_chart(
 def create(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name containing the data.")],
-    range: Annotated[str, typer.Argument(help="Data range for the chart (e.g., A1:D10).")],
+    range: Annotated[
+        str, typer.Argument(help="Data range for the chart (e.g., A1:D10).")
+    ],
     type: Annotated[
         str,
-        typer.Option("--type", "-t", help=f"Chart type: {', '.join(CHART_TYPES.keys())}."),
+        typer.Option(
+            "--type", "-t", help=f"Chart type: {', '.join(CHART_TYPES.keys())}."
+        ),
     ],
     name: Annotated[
         Optional[str],
@@ -373,7 +388,11 @@ def create(
     ] = None,
     pivot: Annotated[
         Optional[str],
-        typer.Option("--pivot", "-p", help="Name of the pivot table to link the chart to (creates a PivotChart)."),
+        typer.Option(
+            "--pivot",
+            "-p",
+            help="Name of the pivot table to link the chart to (creates a PivotChart).",
+        ),
     ] = None,
 ) -> None:
     """Create a chart in a sheet.

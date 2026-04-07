@@ -20,7 +20,9 @@ csv_app = typer.Typer(help="CSV import/export operations for Excel workbooks.")
 @csv_app.command(name="import")
 def import_csv(
     csv_file: Annotated[Path, typer.Argument(help="Path to the CSV file to import.")],
-    excel_file: Annotated[Path, typer.Argument(help="Path to the Excel workbook file.")],
+    excel_file: Annotated[
+        Path, typer.Argument(help="Path to the Excel workbook file.")
+    ],
     sheet: Annotated[str, typer.Argument(help="Sheet name to import into.")],
     has_header: Annotated[
         bool,
@@ -128,15 +130,25 @@ def import_csv(
 
 @csv_app.command()
 def export(
-    excel_file: Annotated[Path, typer.Argument(help="Path to the Excel workbook file.")],
+    excel_file: Annotated[
+        Path, typer.Argument(help="Path to the Excel workbook file.")
+    ],
     sheet: Annotated[str, typer.Argument(help="Sheet name to export from.")],
     range_spec: Annotated[
         str | None,
-        typer.Option("--range", "-r", help="Range to export (e.g., A1:C10). If not specified, exports entire used range."),
+        typer.Option(
+            "--range",
+            "-r",
+            help="Range to export (e.g., A1:C10). If not specified, exports entire used range.",
+        ),
     ] = None,
     output: Annotated[
         Path | None,
-        typer.Option("--output", "-o", help="Output CSV file. If not specified, outputs to stdout."),
+        typer.Option(
+            "--output",
+            "-o",
+            help="Output CSV file. If not specified, outputs to stdout.",
+        ),
     ] = None,
 ) -> None:
     """Export an Excel range/sheet to CSV."""

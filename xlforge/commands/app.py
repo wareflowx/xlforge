@@ -107,7 +107,9 @@ def focus(
 @app_cmd.command()
 def alert(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
-    message: Annotated[str, typer.Argument(help="Message to display in the alert dialog.")],
+    message: Annotated[
+        str, typer.Argument(help="Message to display in the alert dialog.")
+    ],
 ) -> None:
     """Show an alert dialog in Excel."""
     try:
@@ -127,7 +129,9 @@ def wait_idle(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     timeout: Annotated[
         Optional[int],
-        typer.Option("--timeout", "-t", help="Timeout in seconds. Use 0 for no timeout."),
+        typer.Option(
+            "--timeout", "-t", help="Timeout in seconds. Use 0 for no timeout."
+        ),
     ] = None,
 ) -> None:
     """Wait for Excel to finish all pending calculations."""

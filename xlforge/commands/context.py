@@ -22,7 +22,7 @@ def get_context() -> dict:
     if CONTEXT_FILE.exists():
         try:
             return json.loads(CONTEXT_FILE.read_text())
-        except (json.JSONDecodeError, IOError):
+        except json.JSONDecodeError, IOError:
             return {}
     return {}
 

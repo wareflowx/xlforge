@@ -30,7 +30,7 @@ def _is_file_open_in_excel(path: Path) -> bool:
             with open(path, "a+b"):
                 pass
             return False
-        except (OSError, IOError):
+        except OSError, IOError:
             # File could not be opened exclusively - likely open in Excel
             return True
 
@@ -80,6 +80,6 @@ def _check_file_not_open_in_excel(path: Path) -> tuple[bool, str]:
         return (
             True,
             f"File is currently open in Excel: {path.name}\n"
-            "Please close Excel before modifying this file."
+            "Please close Excel before modifying this file.",
         )
     return False, ""

@@ -201,13 +201,18 @@ def check(
     if not path.exists():
         error_msg = f"Error: File does not exist: {path}"
         if json_output:
-            typer.echo(json.dumps({
-                "path": str(path),
-                "exists": False,
-                "valid_xlsx": False,
-                "healthy": False,
-                "errors": [error_msg],
-            }, indent=2))
+            typer.echo(
+                json.dumps(
+                    {
+                        "path": str(path),
+                        "exists": False,
+                        "valid_xlsx": False,
+                        "healthy": False,
+                        "errors": [error_msg],
+                    },
+                    indent=2,
+                )
+            )
         else:
             typer.secho(error_msg, fg=typer.colors.RED, err=True)
         raise typer.Exit(code=int(ErrorCode.FILE_DOES_NOT_EXIST))

@@ -37,7 +37,8 @@ def set(
         bool, typer.Option("--italic", "-i", help="Set cell to italic.")
     ] = False,
     color: Annotated[
-        Optional[str], typer.Option("--color", "-c", help="Font color as hex (#RRGGBB or RRGGBB).")
+        Optional[str],
+        typer.Option("--color", "-c", help="Font color as hex (#RRGGBB or RRGGBB)."),
     ] = None,
 ) -> None:
     """Set cell style (bold, italic, color)."""
@@ -129,7 +130,9 @@ def number_format(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name.")],
     coord: Annotated[str, typer.Argument(help="Cell coordinate (e.g., A1).")],
-    format: Annotated[str, typer.Argument(help="Number format (e.g., 0.00, $#,##0.00).")],
+    format: Annotated[
+        str, typer.Argument(help="Number format (e.g., 0.00, $#,##0.00).")
+    ],
 ) -> None:
     """Set cell number format."""
     # Check if file exists
@@ -180,10 +183,12 @@ def font(
     sheet: Annotated[str, typer.Argument(help="Sheet name.")],
     coord: Annotated[str, typer.Argument(help="Cell coordinate (e.g., A1).")],
     name: Annotated[
-        Optional[str], typer.Option("--name", "-n", help="Font name (e.g., Arial, Calibri).")
+        Optional[str],
+        typer.Option("--name", "-n", help="Font name (e.g., Arial, Calibri)."),
     ] = None,
     size: Annotated[
-        Optional[int], typer.Option("--size", "-s", help="Font size (e.g., 10, 12, 14).")
+        Optional[int],
+        typer.Option("--size", "-s", help="Font size (e.g., 10, 12, 14)."),
     ] = None,
 ) -> None:
     """Set cell font (name and size)."""

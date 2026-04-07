@@ -32,7 +32,15 @@ _XL_COUNT_NUMBERS = -4112
 
 
 # Aggregation types supported by Excel pivot tables
-AGGREGATION_TYPES = {"SUM", "COUNT", "AVERAGE", "MIN", "MAX", "PRODUCT", "COUNT_NUMBERS"}
+AGGREGATION_TYPES = {
+    "SUM",
+    "COUNT",
+    "AVERAGE",
+    "MIN",
+    "MAX",
+    "PRODUCT",
+    "COUNT_NUMBERS",
+}
 
 
 def _is_xlwings_available() -> bool:
@@ -54,7 +62,9 @@ def _parse_aggregation(agg_str: str) -> tuple[str, str]:
     """
     parts = agg_str.split(":", 1)
     if len(parts) != 2:
-        raise ValueError(f"Invalid aggregation format: {agg_str}. Expected 'AGGREGATION:FieldName'.")
+        raise ValueError(
+            f"Invalid aggregation format: {agg_str}. Expected 'AGGREGATION:FieldName'."
+        )
     agg_type, field_name = parts
     agg_type_upper = agg_type.upper()
     if agg_type_upper not in AGGREGATION_TYPES:
@@ -100,7 +110,9 @@ def _parse_range(range_str: str) -> tuple[int, int, int, int]:
     return min_col, min_row, max_col, max_row
 
 
-def _cell_range_to_excel_ref(min_col: int, min_row: int, max_col: int, max_row: int) -> str:
+def _cell_range_to_excel_ref(
+    min_col: int, min_row: int, max_col: int, max_row: int
+) -> str:
     """Convert numeric range to Excel reference like 'A1:D10'.
 
     Args:
@@ -122,11 +134,17 @@ def _cell_range_to_excel_ref(min_col: int, min_row: int, max_col: int, max_row: 
 @pivot_app.command()
 def create(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
-    source_sheet: Annotated[str, typer.Argument(help="Sheet name containing the source data.")],
-    source_range: Annotated[str, typer.Argument(help="Source data range (e.g., A1:D10).")],
+    source_sheet: Annotated[
+        str, typer.Argument(help="Sheet name containing the source data.")
+    ],
+    source_range: Annotated[
+        str, typer.Argument(help="Source data range (e.g., A1:D10).")
+    ],
     sheet: Annotated[
         Optional[str],
-        typer.Option("--sheet", "-s", help="Sheet name where pivot table will be created."),
+        typer.Option(
+            "--sheet", "-s", help="Sheet name where pivot table will be created."
+        ),
     ] = None,
     name: Annotated[
         Optional[str],
@@ -142,7 +160,9 @@ def create(
     ] = None,
     values: Annotated[
         Optional[list[str]],
-        typer.Option("--values", "-v", help="Aggregation specifications (e.g., SUM:Revenue)."),
+        typer.Option(
+            "--values", "-v", help="Aggregation specifications (e.g., SUM:Revenue)."
+        ),
     ] = None,
     filters: Annotated[
         Optional[str],
@@ -323,7 +343,9 @@ def create(
         typer.echo(f"Source: {path} ({source_sheet}, {source_range})")
 
         if parsed_values:
-            typer.echo(f"Aggregations: {', '.join(f'{agg}:{field}' for agg, field in parsed_values)}")
+            typer.echo(
+                f"Aggregations: {', '.join(f'{agg}:{field}' for agg, field in parsed_values)}"
+            )
         if row_fields:
             typer.echo(f"Row fields: {', '.join(row_fields)}")
         if col_fields:
@@ -572,7 +594,9 @@ def refresh(
             sheets_to_check = [wb_com.Sheets(sheet)]
         else:
             # Iterate all sheets - need to convert to list first
-            sheets_to_check = [wb_com.Sheets.Item(i) for i in range(1, wb_com.Sheets.Count + 1)]
+            sheets_to_check = [
+                wb_com.Sheets.Item(i) for i in range(1, wb_com.Sheets.Count + 1)
+            ]
 
         for ws in sheets_to_check:
             try:

@@ -23,11 +23,15 @@ def _format_table(values: list[list]) -> str:
         return ""
 
     # Calculate column widths
-    col_widths = [max(len(str(row[i])) for row in values) for i in range(len(values[0]))]
+    col_widths = [
+        max(len(str(row[i])) for row in values) for i in range(len(values[0]))
+    ]
 
     lines = []
     for row in values:
-        formatted_cells = [str(cell).ljust(width) for cell, width in zip(row, col_widths)]
+        formatted_cells = [
+            str(cell).ljust(width) for cell, width in zip(row, col_widths)
+        ]
         lines.append(" | ".join(formatted_cells))
 
     return "\n".join(lines)
@@ -89,7 +93,9 @@ def read(
                 table_values = [[str(cell.raw) for cell in row] for row in range_values]
                 table = _format_table(table_values)
                 typer.echo(f"Range: {coord}")
-                typer.echo(f"Dimensions: {len(range_values)} rows x {len(range_values[0]) if range_values else 0} columns")
+                typer.echo(
+                    f"Dimensions: {len(range_values)} rows x {len(range_values[0]) if range_values else 0} columns"
+                )
                 typer.echo("")
                 typer.echo(table)
 
@@ -109,7 +115,9 @@ def write(
     coord: Annotated[str, typer.Argument(help="Range coordinate (e.g., A1:C3).")],
     values_json: Annotated[
         Optional[str],
-        typer.Argument(help="JSON array of values to write (e.g., '[[\"A\",1,true],[\"B\",2,false]]')."),
+        typer.Argument(
+            help='JSON array of values to write (e.g., \'[["A",1,true],["B",2,false]]\').'
+        ),
     ] = None,
     csv_file: Annotated[
         Optional[Path],
@@ -184,7 +192,9 @@ def write(
                     raise typer.Exit(code=1)
 
             # Validate values is a 2D array
-            if not isinstance(values, list) or not all(isinstance(row, list) for row in values):
+            if not isinstance(values, list) or not all(
+                isinstance(row, list) for row in values
+            ):
                 typer.secho(
                     "Error: Values must be a 2D array (list of lists).",
                     fg=typer.colors.RED,
@@ -209,7 +219,9 @@ def write(
 
             rows = len(values)
             cols = len(values[0]) if values else 0
-            typer.echo(f"Written {rows} row(s) x {cols} column(s) to range {coord} in sheet '{sheet}'.")
+            typer.echo(
+                f"Written {rows} row(s) x {cols} column(s) to range {coord} in sheet '{sheet}'."
+            )
 
     except XlforgeError:
         raise

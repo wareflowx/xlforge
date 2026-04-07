@@ -169,7 +169,9 @@ def _create_native_table(
         wb_com.Close()
 
         table_name = name if name else tbl.Name
-        typer.echo(f"Created native Excel table '{table_name}' at {range_ref} in sheet '{sheet}'")
+        typer.echo(
+            f"Created native Excel table '{table_name}' at {range_ref} in sheet '{sheet}'"
+        )
         typer.echo("Note: Native Excel tables auto-expand when data is added below.")
 
     except typer.Exit:
@@ -190,10 +192,15 @@ def create(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name containing the range.")],
     range_ref: Annotated[str, typer.Argument(help="Range reference (e.g., A1:C10).")],
-    name: Annotated[str | None, typer.Option("--name", "-n", help="Name for the table.")] = None,
+    name: Annotated[
+        str | None, typer.Option("--name", "-n", help="Name for the table.")
+    ] = None,
     native: Annotated[
         bool,
-        typer.Option("--native", help="Use native Excel tables via win32com (requires Excel installed)."),
+        typer.Option(
+            "--native",
+            help="Use native Excel tables via win32com (requires Excel installed).",
+        ),
     ] = False,
 ) -> None:
     """Create an Excel table from a range.
@@ -265,7 +272,9 @@ def list_tables(
 def delete(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     name: Annotated[str, typer.Argument(help="Name of the table to delete.")],
-    sheet: Annotated[str, typer.Option("--sheet", "-s", help="Sheet name containing the table.")] = None,
+    sheet: Annotated[
+        str, typer.Option("--sheet", "-s", help="Sheet name containing the table.")
+    ] = None,
 ) -> None:
     """Delete a table from the workbook."""
     # Check if file exists

@@ -16,15 +16,30 @@ from openpyxl.formatting.rule import ColorScaleRule, DataBarRule, IconSetRule, R
 
 from xlforge.core.errors import ErrorCode, XlforgeError
 
-format_condition_app = typer.Typer(help="Conditional formatting operations for Excel workbooks.")
+format_condition_app = typer.Typer(
+    help="Conditional formatting operations for Excel workbooks."
+)
 
 CONDITIONAL_TYPES = ["data-bar", "color-scale", "icon-set", "formula"]
 RULE_TYPES = ["greater-than", "less-than", "between", "equal", "contains"]
 ICON_SETS = [
-    "3Arrows", "3ArrowsGray", "3Flags", "3Signs", "3Symbols", "3Symbols2",
-    "3TrafficLights1", "3TrafficLights2", "4Arrows", "4ArrowsGray",
-    "4Rating", "4RedToBlack", "4TrafficLights", "5Arrows", "5ArrowsGray",
-    "5Quarters", "5Rating",
+    "3Arrows",
+    "3ArrowsGray",
+    "3Flags",
+    "3Signs",
+    "3Symbols",
+    "3Symbols2",
+    "3TrafficLights1",
+    "3TrafficLights2",
+    "4Arrows",
+    "4ArrowsGray",
+    "4Rating",
+    "4RedToBlack",
+    "4TrafficLights",
+    "5Arrows",
+    "5ArrowsGray",
+    "5Quarters",
+    "5Rating",
 ]
 
 
@@ -67,23 +82,37 @@ def add(
     range: Annotated[str, typer.Argument(help="Cell range (e.g., A1:A10).")],
     type: Annotated[
         Optional[str],
-        typer.Option("--type", "-t", help=f"Conditional formatting type: {', '.join(CONDITIONAL_TYPES)}."),
+        typer.Option(
+            "--type",
+            "-t",
+            help=f"Conditional formatting type: {', '.join(CONDITIONAL_TYPES)}.",
+        ),
     ] = None,
     rule: Annotated[
         Optional[str],
-        typer.Option("--rule", "-r", help=f"Rule type (for type=rule): {', '.join(RULE_TYPES)}."),
+        typer.Option(
+            "--rule", "-r", help=f"Rule type (for type=rule): {', '.join(RULE_TYPES)}."
+        ),
     ] = None,
     value: Annotated[
         Optional[str],
-        typer.Option("--value", "-v", help="Value for rule-based conditional formatting."),
+        typer.Option(
+            "--value", "-v", help="Value for rule-based conditional formatting."
+        ),
     ] = None,
     formula: Annotated[
         Optional[str],
-        typer.Option("--formula", "-f", help="Formula for formula-based conditional formatting."),
+        typer.Option(
+            "--formula", "-f", help="Formula for formula-based conditional formatting."
+        ),
     ] = None,
     style: Annotated[
         Optional[str],
-        typer.Option("--style", "-s", help="Style string (e.g., 'bold text-#FF0000' or 'italic bg-#FFFF00')."),
+        typer.Option(
+            "--style",
+            "-s",
+            help="Style string (e.g., 'bold text-#FF0000' or 'italic bg-#FFFF00').",
+        ),
     ] = None,
     min: Annotated[
         Optional[str],
@@ -99,7 +128,11 @@ def add(
     ] = None,
     icons: Annotated[
         Optional[str],
-        typer.Option("--icons", "-i", help=f"Icon set name for icon-set type: {', '.join(ICON_SETS[:10])}..."),
+        typer.Option(
+            "--icons",
+            "-i",
+            help=f"Icon set name for icon-set type: {', '.join(ICON_SETS[:10])}...",
+        ),
     ] = None,
 ) -> None:
     """Add conditional formatting to a range."""
@@ -224,9 +257,17 @@ def add(
 
         # Create the appropriate conditional formatting rule
         if actual_type == "data-bar":
-            rule_obj = DataBarRule(start_type="num", start_value=0, end_type="num", end_value=100, color="638EC6")
+            rule_obj = DataBarRule(
+                start_type="num",
+                start_value=0,
+                end_type="num",
+                end_value=100,
+                color="638EC6",
+            )
             ws.conditional_formatting.add(range, rule_obj)
-            typer.echo(f"Added data bar conditional formatting to range {range} on sheet '{sheet}'")
+            typer.echo(
+                f"Added data bar conditional formatting to range {range} on sheet '{sheet}'"
+            )
 
         elif actual_type == "color-scale":
             min_color = "FF" + min.lstrip("#")
@@ -234,17 +275,29 @@ def add(
             if mid is not None:
                 mid_color = "FF" + mid.lstrip("#")
                 rule_obj = ColorScaleRule(
-                    start_type="num", start_value=None, start_color=min_color,
-                    mid_type="num", mid_value=None, mid_color=mid_color,
-                    end_type="num", end_value=None, end_color=max_color,
+                    start_type="num",
+                    start_value=None,
+                    start_color=min_color,
+                    mid_type="num",
+                    mid_value=None,
+                    mid_color=mid_color,
+                    end_type="num",
+                    end_value=None,
+                    end_color=max_color,
                 )
             else:
                 rule_obj = ColorScaleRule(
-                    start_type="num", start_value=None, start_color=min_color,
-                    end_type="num", end_value=None, end_color=max_color,
+                    start_type="num",
+                    start_value=None,
+                    start_color=min_color,
+                    end_type="num",
+                    end_value=None,
+                    end_color=max_color,
                 )
             ws.conditional_formatting.add(range, rule_obj)
-            typer.echo(f"Added color scale conditional formatting to range {range} on sheet '{sheet}'")
+            typer.echo(
+                f"Added color scale conditional formatting to range {range} on sheet '{sheet}'"
+            )
 
         elif actual_type == "icon-set":
             # IconSetRule needs values - provide default thresholds based on icon set type
@@ -254,7 +307,9 @@ def add(
                 values=["0", "33", "67", "100"],
             )
             ws.conditional_formatting.add(range, rule_obj)
-            typer.echo(f"Added icon set conditional formatting ({icons}) to range {range} on sheet '{sheet}'")
+            typer.echo(
+                f"Added icon set conditional formatting ({icons}) to range {range} on sheet '{sheet}'"
+            )
 
         elif actual_type == "formula":
             font_kwargs = _parse_style_string(style) if style else {}
@@ -262,7 +317,9 @@ def add(
             if font_kwargs:
                 rule_obj.font = openpyxl.styles.Font(**font_kwargs)
             ws.conditional_formatting.add(range, rule_obj)
-            typer.echo(f"Added formula conditional formatting to range {range} on sheet '{sheet}'")
+            typer.echo(
+                f"Added formula conditional formatting to range {range} on sheet '{sheet}'"
+            )
             typer.echo(f"  Formula: {formula}")
             if style:
                 typer.echo(f"  Style: {style}")

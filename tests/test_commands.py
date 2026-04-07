@@ -21,6 +21,7 @@ def _is_excel_available() -> bool:
     """
     try:
         from importlib.util import find_spec
+
         if find_spec("xlwings") is None:
             return False
     except ImportError:
@@ -83,7 +84,9 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["sheet", "create", path, "Sheet"])
 
             # Sheet already exists by default
@@ -127,7 +130,9 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["sheet", "delete", path, "NonExistent"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
@@ -140,11 +145,16 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["sheet", "delete", path, "Sheet"])
 
             assert result.exit_code == ErrorCode.CANNOT_DELETE_LAST_SHEET
-            assert "last sheet" in result.output.lower() or "warning" in result.output.lower()
+            assert (
+                "last sheet" in result.output.lower()
+                or "warning" in result.output.lower()
+            )
 
     def test_sheet_delete_last_sheet_force(self):
         """Test force deleting the last sheet."""
@@ -153,8 +163,12 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["sheet", "delete", path, "Sheet", "--force"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["sheet", "delete", path, "Sheet", "--force"]
+                )
 
             # Note: --force allows deleting last sheet, but openpyxl cannot save
             # an empty workbook, so the file remains unchanged on disk
@@ -169,7 +183,9 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "rename", path, "Sheet", "RenamedSheet"])
+            result = runner.invoke(
+                app, ["sheet", "rename", path, "Sheet", "RenamedSheet"]
+            )
 
             assert result.exit_code == 0
             assert "Renamed sheet 'Sheet' to 'RenamedSheet'" in result.output
@@ -187,8 +203,12 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["sheet", "rename", path, "NonExistent", "NewName"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["sheet", "rename", path, "NonExistent", "NewName"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "not found" in result.output.lower()
@@ -201,8 +221,12 @@ class TestSheetCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["sheet", "rename", path, "Sheet", "ExistingSheet"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["sheet", "rename", path, "Sheet", "ExistingSheet"]
+                )
 
             assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
             assert "already exists" in result.output.lower()
@@ -227,8 +251,12 @@ class TestCellRead:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "read", path, "NonexistentSheet", "A1"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["cell", "read", path, "NonexistentSheet", "A1"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -297,7 +325,9 @@ class TestCellRead:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "read", path, "Sheet1", "A1", "--json"])
+            result = runner.invoke(
+                app, ["cell", "read", path, "Sheet1", "A1", "--json"]
+            )
 
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -342,8 +372,12 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "write", path, "NonexistentSheet", "A1", "test"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["cell", "write", path, "NonexistentSheet", "A1", "test"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -356,7 +390,9 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "Hello World"])
+            result = runner.invoke(
+                app, ["cell", "write", path, "Sheet", "A1", "Hello World"]
+            )
 
             assert result.exit_code == 0
             assert "Written:" in result.output
@@ -374,7 +410,9 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "42.5", "--type", "number"])
+            result = runner.invoke(
+                app, ["cell", "write", path, "Sheet", "A1", "42.5", "--type", "number"]
+            )
 
             assert result.exit_code == 0
 
@@ -391,7 +429,9 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "TRUE", "--type", "bool"])
+            result = runner.invoke(
+                app, ["cell", "write", path, "Sheet", "A1", "TRUE", "--type", "bool"]
+            )
 
             assert result.exit_code == 0
 
@@ -408,7 +448,9 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "FALSE", "--type", "bool"])
+            result = runner.invoke(
+                app, ["cell", "write", path, "Sheet", "A1", "FALSE", "--type", "bool"]
+            )
 
             assert result.exit_code == 0
 
@@ -424,8 +466,13 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "test", "--type", "invalid"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    ["cell", "write", path, "Sheet", "A1", "test", "--type", "invalid"],
+                )
 
             assert result.exit_code == ErrorCode.TYPE_COERCION_FAILED
             assert "Invalid type" in result.output
@@ -438,7 +485,10 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "2024-01-15", "--type", "date"])
+            result = runner.invoke(
+                app,
+                ["cell", "write", path, "Sheet", "A1", "2024-01-15", "--type", "date"],
+            )
 
             assert result.exit_code == 0
 
@@ -457,7 +507,9 @@ class TestCellWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "write", path, "Sheet", "A1", "00123", "--type", "string"])
+            result = runner.invoke(
+                app, ["cell", "write", path, "Sheet", "A1", "00123", "--type", "string"]
+            )
 
             assert result.exit_code == 0
 
@@ -486,8 +538,12 @@ class TestRangeRead:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["range", "read", path, "NonexistentSheet", "A1:C3"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["range", "read", path, "NonexistentSheet", "A1:C3"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -536,7 +592,9 @@ class TestRangeRead:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["range", "read", path, "Sheet1", "A1:B2", "--json"])
+            result = runner.invoke(
+                app, ["range", "read", path, "Sheet1", "A1:B2", "--json"]
+            )
 
             assert result.exit_code == 0
             data = json.loads(result.output)
@@ -583,7 +641,10 @@ class TestRangeWrite:
         """Test range write with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["range", "write", path, "Sheet1", "A1:C3", '[["a","b"],["c","d"]]'])
+            result = runner.invoke(
+                app,
+                ["range", "write", path, "Sheet1", "A1:C3", '[["a","b"],["c","d"]]'],
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -595,8 +656,20 @@ class TestRangeWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["range", "write", path, "NonexistentSheet", "A1:C3", '[["a","b"],["c","d"]]'])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "range",
+                        "write",
+                        path,
+                        "NonexistentSheet",
+                        "A1:C3",
+                        '[["a","b"],["c","d"]]',
+                    ],
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -609,10 +682,17 @@ class TestRangeWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "range", "write", path, "Sheet", "A1:C3",
-                '[["Name","Age","Active"],["Alice",30,true],["Bob",25,false]]'
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "range",
+                    "write",
+                    path,
+                    "Sheet",
+                    "A1:C3",
+                    '[["Name","Age","Active"],["Alice",30,true],["Bob",25,false]]',
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Written 3 row(s) x 3 column(s) to range A1:C3" in result.output
@@ -649,10 +729,9 @@ class TestRangeWrite:
                 writer.writerow(["Banana", "0.75", "200"])
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "range", "write", path, "Sheet", "A1:C3",
-                "--csv", csv_path
-            ])
+            result = runner.invoke(
+                app, ["range", "write", path, "Sheet", "A1:C3", "--csv", csv_path]
+            )
 
             assert result.exit_code == 0
             assert "Written 3 row(s) x 3 column(s) to range A1:C3" in result.output
@@ -678,11 +757,12 @@ class TestRangeWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, [
-                    "range", "write", path, "Sheet", "A1:B2",
-                    "not valid json"
-                ])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["range", "write", path, "Sheet", "A1:B2", "not valid json"]
+                )
 
             assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
             assert "Invalid JSON" in result.output
@@ -695,11 +775,12 @@ class TestRangeWrite:
 
             path = os.path.join(tmpdir, "test.xlsx")
             csv_path = os.path.join(tmpdir, "nonexistent.csv")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, [
-                    "range", "write", path, "Sheet", "A1:B2",
-                    "--csv", csv_path
-                ])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["range", "write", path, "Sheet", "A1:B2", "--csv", csv_path]
+                )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -711,10 +792,10 @@ class TestRangeWrite:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, [
-                    "range", "write", path, "Sheet", "A1:B2"
-                ])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(app, ["range", "write", path, "Sheet", "A1:B2"])
 
             assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
             assert "Must provide either" in result.output
@@ -730,11 +811,22 @@ class TestRangeWrite:
                 f.write("a,b\nc,d")
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, [
-                    "range", "write", path, "Sheet", "A1:B2",
-                    '[["a","b"],["c","d"]]', "--csv", csv_path
-                ])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "range",
+                        "write",
+                        path,
+                        "Sheet",
+                        "A1:B2",
+                        '[["a","b"],["c","d"]]',
+                        "--csv",
+                        csv_path,
+                    ],
+                )
 
             assert result.exit_code == 1  # ErrorCode.INVALID_ARGUMENT
             assert "Cannot specify both" in result.output
@@ -784,8 +876,12 @@ class TestCsvImport:
             with open(csv_path, "w") as f:
                 f.write("a,b,c\n")
 
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "NonExistent"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["csv", "import", csv_path, xlsx_path, "NonExistent"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "not found" in result.output.lower()
@@ -843,7 +939,9 @@ class TestCsvImport:
                 writer.writerow(["Alice", "30", "NYC"])
                 writer.writerow(["Bob", "25", "LA"])
 
-            result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet", "--has-header"])
+            result = runner.invoke(
+                app, ["csv", "import", csv_path, xlsx_path, "Sheet", "--has-header"]
+            )
 
             assert result.exit_code == 0
 
@@ -868,8 +966,12 @@ class TestCsvImport:
             with open(csv_path, "w") as f:
                 pass
 
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["csv", "import", csv_path, xlsx_path, "Sheet"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["csv", "import", csv_path, xlsx_path, "Sheet"]
+                )
 
             assert result.exit_code == ErrorCode.INVALID_CSV_FORMAT
             assert "empty" in result.output.lower()
@@ -894,7 +996,9 @@ class TestCsvExport:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["csv", "export", path, "NonExistent"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
@@ -942,7 +1046,9 @@ class TestCsvExport:
 
             xlsx_path = os.path.join(tmpdir, "test.xlsx")
             csv_path = os.path.join(tmpdir, "output.csv")
-            result = runner.invoke(app, ["csv", "export", xlsx_path, "Sheet1", "--output", csv_path])
+            result = runner.invoke(
+                app, ["csv", "export", xlsx_path, "Sheet1", "--output", csv_path]
+            )
 
             assert result.exit_code == 0
             assert "Exported" in result.output
@@ -973,7 +1079,19 @@ class TestCsvExport:
 
             xlsx_path = os.path.join(tmpdir, "test.xlsx")
             csv_path = os.path.join(tmpdir, "output.csv")
-            result = runner.invoke(app, ["csv", "export", xlsx_path, "Sheet1", "--range", "A1:B2", "--output", csv_path])
+            result = runner.invoke(
+                app,
+                [
+                    "csv",
+                    "export",
+                    xlsx_path,
+                    "Sheet1",
+                    "--range",
+                    "A1:B2",
+                    "--output",
+                    csv_path,
+                ],
+            )
 
             assert result.exit_code == 0
 
@@ -1084,7 +1202,9 @@ class TestRowUnhide:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["row", "unhide", path, "NonexistentSheet", "1"])
+            result = runner.invoke(
+                app, ["row", "unhide", path, "NonexistentSheet", "1"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -1141,7 +1261,9 @@ class TestColumnHide:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["column", "hide", path, "NonexistentSheet", "A"])
+            result = runner.invoke(
+                app, ["column", "hide", path, "NonexistentSheet", "A"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -1206,7 +1328,9 @@ class TestColumnUnhide:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["column", "unhide", path, "NonexistentSheet", "A"])
+            result = runner.invoke(
+                app, ["column", "unhide", path, "NonexistentSheet", "A"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -1259,7 +1383,9 @@ class TestNamedRangeCreate:
         """Test named-range create with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["named-range", "create", path, "MyRange", "Sheet1", "A1:C10"])
+            result = runner.invoke(
+                app, ["named-range", "create", path, "MyRange", "Sheet1", "A1:C10"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -1271,7 +1397,17 @@ class TestNamedRangeCreate:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["named-range", "create", path, "MyRange", "NonExistentSheet", "A1:C10"])
+            result = runner.invoke(
+                app,
+                [
+                    "named-range",
+                    "create",
+                    path,
+                    "MyRange",
+                    "NonExistentSheet",
+                    "A1:C10",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -1286,7 +1422,9 @@ class TestNamedRangeCreate:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["named-range", "create", path, "SalesData", "Sheet1", "A1:C10"])
+            result = runner.invoke(
+                app, ["named-range", "create", path, "SalesData", "Sheet1", "A1:C10"]
+            )
 
             assert result.exit_code == 0
             assert "Created named range 'SalesData'" in result.output
@@ -1306,11 +1444,15 @@ class TestNamedRangeCreate:
             ws.title = "Sheet1"
             # Create a named range first
             from openpyxl.workbook.defined_name import DefinedName
+
             wb.defined_names.add(DefinedName("ExistingRange", attr_text="Sheet1!A1:B5"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["named-range", "create", path, "ExistingRange", "Sheet1", "C1:D10"])
+            result = runner.invoke(
+                app,
+                ["named-range", "create", path, "ExistingRange", "Sheet1", "C1:D10"],
+            )
 
             assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
             assert "already exists" in result.output.lower()
@@ -1335,7 +1477,9 @@ class TestNamedRangeDelete:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["named-range", "delete", path, "NonExistentRange"])
+            result = runner.invoke(
+                app, ["named-range", "delete", path, "NonExistentRange"]
+            )
 
             assert result.exit_code == ErrorCode.TABLE_NOT_FOUND
             assert "not found" in result.output.lower()
@@ -1348,6 +1492,7 @@ class TestNamedRangeDelete:
             ws.title = "Sheet1"
             # Create a named range first
             from openpyxl.workbook.defined_name import DefinedName
+
             wb.defined_names.add(DefinedName("ToDelete", attr_text="Sheet1!A1:B5"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
@@ -1395,6 +1540,7 @@ class TestNamedRangeList:
             ws.title = "Sheet1"
             # Create named ranges
             from openpyxl.workbook.defined_name import DefinedName
+
             wb.defined_names.add(DefinedName("Range1", attr_text="Sheet1!A1:A10"))
             wb.defined_names.add(DefinedName("Range2", attr_text="Sheet1!B1:B10"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
@@ -1428,7 +1574,9 @@ class TestNamedRangeGet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["named-range", "get", path, "NonExistentRange"])
+            result = runner.invoke(
+                app, ["named-range", "get", path, "NonExistentRange"]
+            )
 
             assert result.exit_code == ErrorCode.TABLE_NOT_FOUND
             assert "not found" in result.output.lower()
@@ -1441,6 +1589,7 @@ class TestNamedRangeGet:
             ws.title = "Sheet1"
             # Create a named range
             from openpyxl.workbook.defined_name import DefinedName
+
             wb.defined_names.add(DefinedName("MyRange", attr_text="Sheet1!A1:C100"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
@@ -1458,7 +1607,9 @@ class TestStyleSet:
         """Test style set with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--bold"])
+            result = runner.invoke(
+                app, ["style", "set", path, "Sheet1", "A1", "--bold"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -1470,7 +1621,9 @@ class TestStyleSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "set", path, "NonexistentSheet", "A1", "--bold"])
+            result = runner.invoke(
+                app, ["style", "set", path, "NonexistentSheet", "A1", "--bold"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -1482,7 +1635,9 @@ class TestStyleSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "set", path, "Sheet", "A1", "--color", "invalid"])
+            result = runner.invoke(
+                app, ["style", "set", path, "Sheet", "A1", "--color", "invalid"]
+            )
 
             assert result.exit_code == ErrorCode.INVALID_STYLE_STRING
             assert "Invalid color" in result.output
@@ -1497,7 +1652,9 @@ class TestStyleSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--bold"])
+            result = runner.invoke(
+                app, ["style", "set", path, "Sheet1", "A1", "--bold"]
+            )
 
             assert result.exit_code == 0
             assert "bold" in result.output
@@ -1517,7 +1674,9 @@ class TestStyleSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--italic"])
+            result = runner.invoke(
+                app, ["style", "set", path, "Sheet1", "A1", "--italic"]
+            )
 
             assert result.exit_code == 0
             assert "italic" in result.output
@@ -1537,7 +1696,9 @@ class TestStyleSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--color", "FF0000"])
+            result = runner.invoke(
+                app, ["style", "set", path, "Sheet1", "A1", "--color", "FF0000"]
+            )
 
             assert result.exit_code == 0
             assert "color" in result.output.lower()
@@ -1557,7 +1718,9 @@ class TestStyleSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "set", path, "Sheet1", "A1", "--color", "#00FF00"])
+            result = runner.invoke(
+                app, ["style", "set", path, "Sheet1", "A1", "--color", "#00FF00"]
+            )
 
             assert result.exit_code == 0
 
@@ -1576,9 +1739,20 @@ class TestStyleSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "style", "set", path, "Sheet1", "A1", "--bold", "--italic", "--color", "0000FF"
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "style",
+                    "set",
+                    path,
+                    "Sheet1",
+                    "A1",
+                    "--bold",
+                    "--italic",
+                    "--color",
+                    "0000FF",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "bold" in result.output
@@ -1616,7 +1790,9 @@ class TestStyleNumberFormat:
         """Test style number-format with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["style", "number-format", path, "Sheet1", "A1", "0.00"])
+            result = runner.invoke(
+                app, ["style", "number-format", path, "Sheet1", "A1", "0.00"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -1628,7 +1804,9 @@ class TestStyleNumberFormat:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "number-format", path, "NonexistentSheet", "A1", "0.00"])
+            result = runner.invoke(
+                app, ["style", "number-format", path, "NonexistentSheet", "A1", "0.00"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -1643,7 +1821,9 @@ class TestStyleNumberFormat:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "number-format", path, "Sheet1", "A1", "0.00"])
+            result = runner.invoke(
+                app, ["style", "number-format", path, "Sheet1", "A1", "0.00"]
+            )
 
             assert result.exit_code == 0
             assert "number format" in result.output.lower()
@@ -1664,7 +1844,9 @@ class TestStyleNumberFormat:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "number-format", path, "Sheet1", "B2", "$#,##0.00"])
+            result = runner.invoke(
+                app, ["style", "number-format", path, "Sheet1", "B2", "$#,##0.00"]
+            )
 
             assert result.exit_code == 0
 
@@ -1681,7 +1863,9 @@ class TestStyleFont:
         """Test style font with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--name", "Arial"])
+            result = runner.invoke(
+                app, ["style", "font", path, "Sheet1", "A1", "--name", "Arial"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -1693,7 +1877,10 @@ class TestStyleFont:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "font", path, "NonexistentSheet", "A1", "--name", "Arial"])
+            result = runner.invoke(
+                app,
+                ["style", "font", path, "NonexistentSheet", "A1", "--name", "Arial"],
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -1720,7 +1907,9 @@ class TestStyleFont:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--name", "Arial"])
+            result = runner.invoke(
+                app, ["style", "font", path, "Sheet1", "A1", "--name", "Arial"]
+            )
 
             assert result.exit_code == 0
             assert "name" in result.output.lower()
@@ -1741,7 +1930,9 @@ class TestStyleFont:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--size", "14"])
+            result = runner.invoke(
+                app, ["style", "font", path, "Sheet1", "A1", "--size", "14"]
+            )
 
             assert result.exit_code == 0
             assert "size" in result.output.lower()
@@ -1762,7 +1953,20 @@ class TestStyleFont:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["style", "font", path, "Sheet1", "A1", "--name", "Calibri", "--size", "12"])
+            result = runner.invoke(
+                app,
+                [
+                    "style",
+                    "font",
+                    path,
+                    "Sheet1",
+                    "A1",
+                    "--name",
+                    "Calibri",
+                    "--size",
+                    "12",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "name" in result.output.lower()
@@ -1872,7 +2076,9 @@ class TestPropertiesSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["properties", "set", path, "--title", "My Title"])
+            result = runner.invoke(
+                app, ["properties", "set", path, "--title", "My Title"]
+            )
 
             assert result.exit_code == 0
             assert "title='My Title'" in result.output
@@ -1889,7 +2095,9 @@ class TestPropertiesSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["properties", "set", path, "--author", "John Doe"])
+            result = runner.invoke(
+                app, ["properties", "set", path, "--author", "John Doe"]
+            )
 
             assert result.exit_code == 0
             assert "author='John Doe'" in result.output
@@ -1906,7 +2114,9 @@ class TestPropertiesSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["properties", "set", path, "--subject", "Test Subject"])
+            result = runner.invoke(
+                app, ["properties", "set", path, "--subject", "Test Subject"]
+            )
 
             assert result.exit_code == 0
             assert "subject='Test Subject'" in result.output
@@ -1923,7 +2133,9 @@ class TestPropertiesSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["properties", "set", path, "--keywords", "test, keywords"])
+            result = runner.invoke(
+                app, ["properties", "set", path, "--keywords", "test, keywords"]
+            )
 
             assert result.exit_code == 0
             assert "keywords='test, keywords'" in result.output
@@ -1940,7 +2152,9 @@ class TestPropertiesSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["properties", "set", path, "--comments", "Test comments"])
+            result = runner.invoke(
+                app, ["properties", "set", path, "--comments", "Test comments"]
+            )
 
             assert result.exit_code == 0
             assert "comments='Test comments'" in result.output
@@ -1957,12 +2171,20 @@ class TestPropertiesSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "properties", "set", path,
-                "--title", "Multi Title",
-                "--author", "Multi Author",
-                "--subject", "Multi Subject"
-            ])
+            result = runner.invoke(
+                app,
+                [
+                    "properties",
+                    "set",
+                    path,
+                    "--title",
+                    "Multi Title",
+                    "--author",
+                    "Multi Author",
+                    "--subject",
+                    "Multi Subject",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "title='Multi Title'" in result.output
@@ -1985,10 +2207,9 @@ class TestPropertiesSet:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, [
-                "properties", "set", path,
-                "--subject", "New Subject"
-            ])
+            result = runner.invoke(
+                app, ["properties", "set", path, "--subject", "New Subject"]
+            )
 
             assert result.exit_code == 0
 
@@ -2007,7 +2228,20 @@ class TestValidationAdd:
         """Test validation add with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "A1:A10", "--type", "list", "--formula1", "A,B,C"])
+            result = runner.invoke(
+                app,
+                [
+                    "validation",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "list",
+                    "--formula1",
+                    "A,B,C",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -2019,7 +2253,20 @@ class TestValidationAdd:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "add", path, "NonExistentSheet", "A1:A10", "--type", "list", "--formula1", "A,B,C"])
+            result = runner.invoke(
+                app,
+                [
+                    "validation",
+                    "add",
+                    path,
+                    "NonExistentSheet",
+                    "A1:A10",
+                    "--type",
+                    "list",
+                    "--formula1",
+                    "A,B,C",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -2031,7 +2278,20 @@ class TestValidationAdd:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "add", path, "Sheet", "A1:A10", "--type", "invalid", "--formula1", "A,B,C"])
+            result = runner.invoke(
+                app,
+                [
+                    "validation",
+                    "add",
+                    path,
+                    "Sheet",
+                    "A1:A10",
+                    "--type",
+                    "invalid",
+                    "--formula1",
+                    "A,B,C",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.VALIDATION_TYPE_NOT_SUPPORTED
             assert "Invalid validation type" in result.output
@@ -2043,7 +2303,9 @@ class TestValidationAdd:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "add", path, "Sheet", "A1:A10", "--type", "list"])
+            result = runner.invoke(
+                app, ["validation", "add", path, "Sheet", "A1:A10", "--type", "list"]
+            )
 
             assert result.exit_code == ErrorCode.INVALID_FORMULA_SYNTAX
             assert "--formula1 is required" in result.output
@@ -2057,7 +2319,20 @@ class TestValidationAdd:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "A1:A10", "--type", "list", "--formula1", "Option1,Option2,Option3"])
+            result = runner.invoke(
+                app,
+                [
+                    "validation",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "list",
+                    "--formula1",
+                    "Option1,Option2,Option3",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added list validation" in result.output
@@ -2081,7 +2356,22 @@ class TestValidationAdd:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "B1:B10", "--type", "whole", "--formula1", "0", "--formula2", "100"])
+            result = runner.invoke(
+                app,
+                [
+                    "validation",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "B1:B10",
+                    "--type",
+                    "whole",
+                    "--formula1",
+                    "0",
+                    "--formula2",
+                    "100",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added whole validation" in result.output
@@ -2108,7 +2398,22 @@ class TestValidationAdd:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "add", path, "Sheet1", "C1:C5", "--type", "decimal", "--formula1", "0.0", "--formula2", "99.99"])
+            result = runner.invoke(
+                app,
+                [
+                    "validation",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "C1:C5",
+                    "--type",
+                    "decimal",
+                    "--formula1",
+                    "0.0",
+                    "--formula2",
+                    "99.99",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added decimal validation" in result.output
@@ -2129,7 +2434,9 @@ class TestValidationRemove:
         """Test validation remove with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["validation", "remove", path, "Sheet1", "A1:A10"])
+            result = runner.invoke(
+                app, ["validation", "remove", path, "Sheet1", "A1:A10"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -2141,7 +2448,9 @@ class TestValidationRemove:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "remove", path, "NonExistentSheet", "A1:A10"])
+            result = runner.invoke(
+                app, ["validation", "remove", path, "NonExistentSheet", "A1:A10"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -2155,7 +2464,9 @@ class TestValidationRemove:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "remove", path, "Sheet1", "A1:A10"])
+            result = runner.invoke(
+                app, ["validation", "remove", path, "Sheet1", "A1:A10"]
+            )
 
             assert result.exit_code == ErrorCode.VALIDATION_TYPE_NOT_SUPPORTED
             assert "No data validation found" in result.output
@@ -2169,6 +2480,7 @@ class TestValidationRemove:
 
             # Add a validation first
             from openpyxl.worksheet.datavalidation import DataValidation
+
             dv = DataValidation(type="list", formula1="A,B,C", allow_blank=True)
             dv.add("A1:A10")
             ws.add_data_validation(dv)
@@ -2176,7 +2488,9 @@ class TestValidationRemove:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "remove", path, "Sheet1", "A1:A10"])
+            result = runner.invoke(
+                app, ["validation", "remove", path, "Sheet1", "A1:A10"]
+            )
 
             assert result.exit_code == 0
             assert "Removed data validation" in result.output
@@ -2207,7 +2521,9 @@ class TestValidationList:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["validation", "list", path, "NonExistentSheet"])
+            result = runner.invoke(
+                app, ["validation", "list", path, "NonExistentSheet"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -2235,11 +2551,14 @@ class TestValidationList:
 
             # Add validations
             from openpyxl.worksheet.datavalidation import DataValidation
+
             dv1 = DataValidation(type="list", formula1="A,B,C", allow_blank=True)
             dv1.add("A1:A10")
             ws.add_data_validation(dv1)
 
-            dv2 = DataValidation(type="whole", formula1="0", formula2="100", allow_blank=True)
+            dv2 = DataValidation(
+                type="whole", formula1="0", formula2="100", allow_blank=True
+            )
             dv2.add("B1:B10")
             ws.add_data_validation(dv2)
 
@@ -2266,28 +2585,64 @@ class TestChartCreate:
         """Test chart create with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
-                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
+            with unittest.mock.patch(
+                "xlforge.commands.chart.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "chart",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:D10",
+                        "--type",
+                        "column",
+                        "--name",
+                        "TestChart",
+                    ],
+                )
 
             # When xlwings is not available, returns FEATURE_UNAVAILABLE
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
-            assert "xlwings" in result.output.lower() or "excel" in result.output.lower()
+            assert (
+                "xlwings" in result.output.lower() or "excel" in result.output.lower()
+            )
 
     def test_chart_create_xlwings_not_available(self):
         """Test chart create returns error 9 when xlwings is not available."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
             # Mock find_spec to return None to simulate xlwings not available
-            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
-                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:D10", "--type", "column", "--name", "TestChart"])
+            with unittest.mock.patch(
+                "xlforge.commands.chart.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "chart",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:D10",
+                        "--type",
+                        "column",
+                        "--name",
+                        "TestChart",
+                    ],
+                )
 
             # Verify error 9 is returned when xlwings is not available
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
-            assert "Feature unavailable" in result.output or "xlwings" in result.output.lower()
+            assert (
+                "Feature unavailable" in result.output
+                or "xlwings" in result.output.lower()
+            )
 
     def test_chart_create_invalid_type_when_xlwings_available(self):
         """Test chart create with invalid type returns error when xlwings is mocked."""
@@ -2307,8 +2662,24 @@ class TestChartCreate:
 
             # Mock xlwings availability to test actual chart functionality
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
-                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:B3", "--type", "invalid", "--name", "TestChart"])
+
+            with mock.patch(
+                "xlforge.commands.chart._is_xlwings_available", return_value=True
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "chart",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:B3",
+                        "--type",
+                        "invalid",
+                        "--name",
+                        "TestChart",
+                    ],
+                )
 
             assert result.exit_code == ErrorCode.INVALID_CHART_TYPE
             assert "Invalid chart type" in result.output
@@ -2324,8 +2695,24 @@ class TestChartCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
-                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "invalid-range", "--type", "column", "--name", "TestChart"])
+
+            with mock.patch(
+                "xlforge.commands.chart._is_xlwings_available", return_value=True
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "chart",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "invalid-range",
+                        "--type",
+                        "column",
+                        "--name",
+                        "TestChart",
+                    ],
+                )
 
             assert result.exit_code == ErrorCode.INVALID_SYNTAX
             assert "Invalid range format" in result.output
@@ -2347,8 +2734,24 @@ class TestChartCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
-                result = runner.invoke(app, ["chart", "create", path, "Sheet1", "A1:B3", "--type", "column", "--name", "TestChart"])
+
+            with mock.patch(
+                "xlforge.commands.chart._is_xlwings_available", return_value=True
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "chart",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:B3",
+                        "--type",
+                        "column",
+                        "--name",
+                        "TestChart",
+                    ],
+                )
 
             assert result.exit_code == 0
             assert "Created chart" in result.output
@@ -2369,8 +2772,12 @@ class TestChartDelete:
         """Test chart delete with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
-                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+            with unittest.mock.patch(
+                "xlforge.commands.chart.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["chart", "delete", path, "Sheet1", "TestChart"]
+                )
 
             # When xlwings is not available, returns FEATURE_UNAVAILABLE
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -2378,13 +2785,18 @@ class TestChartDelete:
     def test_chart_delete_xlwings_not_available(self):
         """Test chart delete returns error 9 when xlwings is not available."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
-                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+            with unittest.mock.patch(
+                "xlforge.commands.chart.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["chart", "delete", path, "Sheet1", "TestChart"]
+                )
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
 
@@ -2399,8 +2811,13 @@ class TestChartDelete:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
-                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "NonExistentChart"])
+
+            with mock.patch(
+                "xlforge.commands.chart._is_xlwings_available", return_value=True
+            ):
+                result = runner.invoke(
+                    app, ["chart", "delete", path, "Sheet1", "NonExistentChart"]
+                )
 
             assert result.exit_code == ErrorCode.CHART_NOT_FOUND
             assert "Chart not found" in result.output
@@ -2414,6 +2831,7 @@ class TestChartDelete:
 
             # Add a chart first using openpyxl
             from openpyxl.chart import BarChart, Reference
+
             chart = BarChart()
             chart.title = "TestChart"
             data = Reference(ws, min_col=1, min_row=1, max_col=1, max_row=3)
@@ -2425,8 +2843,13 @@ class TestChartDelete:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
-                result = runner.invoke(app, ["chart", "delete", path, "Sheet1", "TestChart"])
+
+            with mock.patch(
+                "xlforge.commands.chart._is_xlwings_available", return_value=True
+            ):
+                result = runner.invoke(
+                    app, ["chart", "delete", path, "Sheet1", "TestChart"]
+                )
 
             assert result.exit_code == 0
             assert "Deleted chart" in result.output
@@ -2445,7 +2868,9 @@ class TestChartList:
         """Test chart list with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.chart.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -2453,12 +2878,15 @@ class TestChartList:
     def test_chart_list_xlwings_not_available(self):
         """Test chart list returns error 9 when xlwings is not available."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.commands.chart.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.chart.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -2474,7 +2902,10 @@ class TestChartList:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.chart._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
 
             assert result.exit_code == 0
@@ -2489,6 +2920,7 @@ class TestChartList:
 
             # Add charts using openpyxl
             from openpyxl.chart import BarChart, LineChart, Reference
+
             chart1 = BarChart()
             chart1.title = "BarChart"
             data = Reference(ws, min_col=1, min_row=1, max_col=1, max_row=3)
@@ -2504,7 +2936,10 @@ class TestChartList:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.chart._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.chart._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(app, ["chart", "list", path, "Sheet1"])
 
             assert result.exit_code == 0
@@ -2535,7 +2970,9 @@ class TestContextCommands:
 
     def test_context_set_with_sheet(self):
         """Test setting context with file and sheet."""
-        result = runner.invoke(app, ["context", "set", "report.xlsx", "--sheet", "Data"])
+        result = runner.invoke(
+            app, ["context", "set", "report.xlsx", "--sheet", "Data"]
+        )
 
         assert result.exit_code == 0
         assert "Context set" in result.output
@@ -2659,7 +3096,9 @@ class TestRowWidth:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["row", "width", path, "NonexistentSheet", "1", "20"])
+            result = runner.invoke(
+                app, ["row", "width", path, "NonexistentSheet", "1", "20"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -2772,7 +3211,9 @@ class TestColumnWidth:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["column", "width", path, "NonexistentSheet", "A", "20"])
+            result = runner.invoke(
+                app, ["column", "width", path, "NonexistentSheet", "A", "20"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -2786,7 +3227,9 @@ class TestColumnWidth:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["column", "width", path, "Sheet1", "A", "15.5"])
+            result = runner.invoke(
+                app, ["column", "width", path, "Sheet1", "A", "15.5"]
+            )
 
             assert result.exit_code == 0
             assert "Set column A width to 15.5" in result.output
@@ -2835,7 +3278,9 @@ class TestColumnAuto:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["column", "auto", path, "NonexistentSheet", "A"])
+            result = runner.invoke(
+                app, ["column", "auto", path, "NonexistentSheet", "A"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -2888,7 +3333,9 @@ class TestTableCreate:
         """Test table create with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "MyTable"])
+            result = runner.invoke(
+                app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "MyTable"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -2900,7 +3347,18 @@ class TestTableCreate:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["table", "create", path, "NonexistentSheet", "A1:C10", "--name", "MyTable"])
+            result = runner.invoke(
+                app,
+                [
+                    "table",
+                    "create",
+                    path,
+                    "NonexistentSheet",
+                    "A1:C10",
+                    "--name",
+                    "MyTable",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -2918,7 +3376,9 @@ class TestTableCreate:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "MyTable"])
+            result = runner.invoke(
+                app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "MyTable"]
+            )
 
             assert result.exit_code == 0
             assert "Created table 'MyTable'" in result.output
@@ -2937,11 +3397,14 @@ class TestTableCreate:
             ws = wb.active
             ws.title = "Sheet1"
             from openpyxl.worksheet.table import Table
+
             ws.add_table(Table(displayName="MyTable", ref="A1:C10"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["table", "create", path, "Sheet1", "D1:F10", "--name", "MyTable"])
+            result = runner.invoke(
+                app, ["table", "create", path, "Sheet1", "D1:F10", "--name", "MyTable"]
+            )
 
             assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
             assert "already exists" in result.output.lower()
@@ -2955,7 +3418,10 @@ class TestTableCreate:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["table", "create", path, "Sheet1", "A1:C10", "--name", "Invalid:Name"])
+            result = runner.invoke(
+                app,
+                ["table", "create", path, "Sheet1", "A1:C10", "--name", "Invalid:Name"],
+            )
 
             assert result.exit_code == ErrorCode.INVALID_TABLE_NAME
             assert "Invalid table name" in result.output
@@ -3006,6 +3472,7 @@ class TestTableList:
             ws = wb.active
             ws.title = "Sheet1"
             from openpyxl.worksheet.table import Table
+
             ws.add_table(Table(displayName="Table1", ref="A1:C10"))
             ws.add_table(Table(displayName="Table2", ref="E1:G10"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
@@ -3049,6 +3516,7 @@ class TestTableDelete:
             ws = wb.active
             ws.title = "Sheet1"
             from openpyxl.worksheet.table import Table
+
             ws.add_table(Table(displayName="MyTable", ref="A1:C10"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
@@ -3072,12 +3540,15 @@ class TestTableDelete:
             ws1.title = "Sheet1"
             ws2 = wb.create_sheet("Sheet2")
             from openpyxl.worksheet.table import Table
+
             ws1.add_table(Table(displayName="Table1", ref="A1:C10"))
             ws2.add_table(Table(displayName="Table2", ref="A1:C10"))
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["table", "delete", path, "Table1", "--sheet", "Sheet1"])
+            result = runner.invoke(
+                app, ["table", "delete", path, "Table1", "--sheet", "Sheet1"]
+            )
 
             assert result.exit_code == 0
             assert "Deleted table 'Table1' from sheet 'Sheet1'" in result.output
@@ -3095,6 +3566,7 @@ class TestPivotCreate:
     def test_pivot_create_xlwings_not_available(self):
         """Test pivot create returns FEATURE_UNAVAILABLE when xlwings is not available."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             ws = wb.active
@@ -3102,14 +3574,27 @@ class TestPivotCreate:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.pivot.find_spec", return_value=None
+            ):
                 result = runner.invoke(
                     app,
-                    ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot"],
+                    [
+                        "pivot",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:D10",
+                        "--name",
+                        "TestPivot",
+                    ],
                 )
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
-            assert "xlwings" in result.output.lower() or "headless" in result.output.lower()
+            assert (
+                "xlwings" in result.output.lower()
+                or "headless" in result.output.lower()
+            )
 
     def test_pivot_create_file_not_found_when_xlwings_available(self):
         """Test pivot create with non-existent file returns error when xlwings is mocked."""
@@ -3117,10 +3602,21 @@ class TestPivotCreate:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.pivot._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(
                     app,
-                    ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot"],
+                    [
+                        "pivot",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:D10",
+                        "--name",
+                        "TestPivot",
+                    ],
                 )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
@@ -3136,10 +3632,21 @@ class TestPivotCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.pivot._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(
                     app,
-                    ["pivot", "create", path, "NonexistentSheet", "A1:D10", "--name", "TestPivot"],
+                    [
+                        "pivot",
+                        "create",
+                        path,
+                        "NonexistentSheet",
+                        "A1:D10",
+                        "--name",
+                        "TestPivot",
+                    ],
                 )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
@@ -3157,10 +3664,21 @@ class TestPivotCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.pivot._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(
                     app,
-                    ["pivot", "create", path, "Sheet1", "invalid-range", "--name", "TestPivot"],
+                    [
+                        "pivot",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "invalid-range",
+                        "--name",
+                        "TestPivot",
+                    ],
                 )
 
             assert result.exit_code == ErrorCode.INVALID_SYNTAX
@@ -3178,10 +3696,23 @@ class TestPivotCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.pivot._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(
                     app,
-                    ["pivot", "create", path, "Sheet1", "A1:D10", "--name", "TestPivot", "--values", "INVALID:Field"],
+                    [
+                        "pivot",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:D10",
+                        "--name",
+                        "TestPivot",
+                        "--values",
+                        "INVALID:Field",
+                    ],
                 )
 
             assert result.exit_code == ErrorCode.INVALID_SYNTAX
@@ -3204,17 +3735,30 @@ class TestPivotCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.pivot._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(
                     app,
                     [
-                        "pivot", "create", path, "Sheet1", "A1:D10",
-                        "--name", "SalesPivot",
-                        "--rows", "Region",
-                        "--columns", "Quarter",
-                        "--values", "SUM:Revenue",
-                        "--values", "SUM:Cost",
-                        "--filters", "Year",
+                        "pivot",
+                        "create",
+                        path,
+                        "Sheet1",
+                        "A1:D10",
+                        "--name",
+                        "SalesPivot",
+                        "--rows",
+                        "Region",
+                        "--columns",
+                        "Quarter",
+                        "--values",
+                        "SUM:Revenue",
+                        "--values",
+                        "SUM:Cost",
+                        "--filters",
+                        "Year",
                     ],
                 )
 
@@ -3235,7 +3779,10 @@ class TestPivotCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.pivot._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(
                     app,
                     ["pivot", "create", path, "Sheet1", "A1:D10"],
@@ -3256,10 +3803,23 @@ class TestPivotCreate:
             path = os.path.join(tmpdir, "test.xlsx")
 
             import unittest.mock as mock
-            with mock.patch("xlforge.commands.pivot._is_xlwings_available", return_value=True):
+
+            with mock.patch(
+                "xlforge.commands.pivot._is_xlwings_available", return_value=True
+            ):
                 result = runner.invoke(
                     app,
-                    ["pivot", "create", path, "Data", "A1:D10", "--sheet", "Dashboard", "--name", "SalesPivot"],
+                    [
+                        "pivot",
+                        "create",
+                        path,
+                        "Data",
+                        "A1:D10",
+                        "--sheet",
+                        "Dashboard",
+                        "--name",
+                        "SalesPivot",
+                    ],
                 )
 
             assert result.exit_code == 0
@@ -3274,7 +3834,9 @@ class TestPivotList:
         """Test pivot list with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.pivot.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["pivot", "list", path])
 
             # xlwings not available returns FEATURE_UNAVAILABLE
@@ -3283,16 +3845,22 @@ class TestPivotList:
     def test_pivot_list_xlwings_not_available(self):
         """Test pivot list when xlwings is not available."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.pivot.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["pivot", "list", path])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
-            assert "xlwings" in result.output.lower() or "headless" in result.output.lower()
+            assert (
+                "xlwings" in result.output.lower()
+                or "headless" in result.output.lower()
+            )
 
 
 class TestPivotDelete:
@@ -3302,7 +3870,9 @@ class TestPivotDelete:
         """Test pivot delete with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.pivot.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -3310,12 +3880,15 @@ class TestPivotDelete:
     def test_pivot_delete_xlwings_not_available(self):
         """Test pivot delete when xlwings is not available."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             wb = openpyxl.Workbook()
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.commands.pivot.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.pivot.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["pivot", "delete", path, "TestPivot"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -3340,7 +3913,9 @@ class TestProtectionProtect:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["protection", "protect", path, "NonexistentSheet"])
+            result = runner.invoke(
+                app, ["protection", "protect", path, "NonexistentSheet"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3373,7 +3948,9 @@ class TestProtectionProtect:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["protection", "protect", path, "Sheet1", "--password", "mypass"])
+            result = runner.invoke(
+                app, ["protection", "protect", path, "Sheet1", "--password", "mypass"]
+            )
 
             assert result.exit_code == 0
             assert "Protected sheet 'Sheet1'" in result.output
@@ -3382,7 +3959,9 @@ class TestProtectionProtect:
             # Verify sheet is protected with password (openpyxl hashes the password)
             wb = openpyxl.load_workbook(path)
             assert wb["Sheet1"].protection.sheet is True
-            assert wb["Sheet1"].protection.password is not None  # Password is hashed by openpyxl
+            assert (
+                wb["Sheet1"].protection.password is not None
+            )  # Password is hashed by openpyxl
             wb.close()
 
 
@@ -3405,7 +3984,9 @@ class TestProtectionUnprotect:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["protection", "unprotect", path, "NonexistentSheet"])
+            result = runner.invoke(
+                app, ["protection", "unprotect", path, "NonexistentSheet"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3450,7 +4031,9 @@ class TestProtectionFreeze:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["protection", "freeze", path, "NonexistentSheet"])
+            result = runner.invoke(
+                app, ["protection", "freeze", path, "NonexistentSheet"]
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3483,7 +4066,10 @@ class TestProtectionFreeze:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1", "--column", "B", "--row", "5"])
+            result = runner.invoke(
+                app,
+                ["protection", "freeze", path, "Sheet1", "--column", "B", "--row", "5"],
+            )
 
             assert result.exit_code == 0
             assert "Freeze panes set to B5" in result.output
@@ -3502,7 +4088,9 @@ class TestProtectionFreeze:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1", "--column", "C"])
+            result = runner.invoke(
+                app, ["protection", "freeze", path, "Sheet1", "--column", "C"]
+            )
 
             assert result.exit_code == 0
             assert "Freeze panes set to C1" in result.output
@@ -3521,7 +4109,9 @@ class TestProtectionFreeze:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["protection", "freeze", path, "Sheet1", "--row", "10"])
+            result = runner.invoke(
+                app, ["protection", "freeze", path, "Sheet1", "--row", "10"]
+            )
 
             assert result.exit_code == 0
             assert "Freeze panes set to A10" in result.output
@@ -3539,7 +4129,9 @@ class TestSheetCopy:
         """Test sheet copy with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet1_Copy"])
+            result = runner.invoke(
+                app, ["sheet", "copy", path, "Sheet1", "Sheet1_Copy"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -3552,8 +4144,12 @@ class TestSheetCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["sheet", "copy", path, "NonexistentSheet", "Sheet1_Copy"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["sheet", "copy", path, "NonexistentSheet", "Sheet1_Copy"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet 'NonexistentSheet' not found" in result.output
@@ -3567,7 +4163,9 @@ class TestSheetCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet2"])
 
             assert result.exit_code == ErrorCode.TABLE_ALREADY_EXISTS
@@ -3584,7 +4182,9 @@ class TestSheetCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["sheet", "copy", path, "Sheet1", "Sheet1_Copy"])
+            result = runner.invoke(
+                app, ["sheet", "copy", path, "Sheet1", "Sheet1_Copy"]
+            )
 
             assert result.exit_code == 0
             assert "Copied sheet 'Sheet1' to 'Sheet1_Copy'" in result.output
@@ -3616,7 +4216,9 @@ class TestSheetUse:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["sheet", "use", path, "NonexistentSheet"])
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
@@ -3650,7 +4252,9 @@ class TestCellCopy:
         """Test cell copy with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "Sheet1", "B1"])
+            result = runner.invoke(
+                app, ["cell", "copy", path, "Sheet1", "A1", "Sheet1", "B1"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -3662,8 +4266,13 @@ class TestCellCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "copy", path, "NonexistentSheet", "A1", "Sheet1", "B1"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    ["cell", "copy", path, "NonexistentSheet", "A1", "Sheet1", "B1"],
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Source sheet not found" in result.output
@@ -3676,8 +4285,13 @@ class TestCellCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "NonexistentSheet", "B1"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    ["cell", "copy", path, "Sheet1", "A1", "NonexistentSheet", "B1"],
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Destination sheet not found" in result.output
@@ -3693,7 +4307,9 @@ class TestCellCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "Sheet1", "B1"])
+            result = runner.invoke(
+                app, ["cell", "copy", path, "Sheet1", "A1", "Sheet1", "B1"]
+            )
 
             assert result.exit_code == 0
             assert "Copied Sheet1!A1 (Hello World) to Sheet1!B1" in result.output
@@ -3715,7 +4331,9 @@ class TestCellCopy:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "copy", path, "Sheet1", "A1", "Sheet2", "C3"])
+            result = runner.invoke(
+                app, ["cell", "copy", path, "Sheet1", "A1", "Sheet2", "C3"]
+            )
 
             assert result.exit_code == 0
             assert "Copied Sheet1!A1 (Cross Sheet Copy) to Sheet2!C3" in result.output
@@ -3745,8 +4363,12 @@ class TestCellSearch:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "search", path, "test", "--sheet", "NonexistentSheet"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["cell", "search", path, "test", "--sheet", "NonexistentSheet"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3761,7 +4383,9 @@ class TestCellSearch:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["cell", "search", path, "NotFound"])
 
             assert result.exit_code == ErrorCode.CELL_NOT_FOUND
@@ -3797,7 +4421,9 @@ class TestCellSearch:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "search", path, "Match in Sheet1", "--sheet", "Sheet1"])
+            result = runner.invoke(
+                app, ["cell", "search", path, "Match in Sheet1", "--sheet", "Sheet1"]
+            )
 
             assert result.exit_code == 0
             assert "Found in Sheet1!A1" in result.output
@@ -3831,7 +4457,9 @@ class TestCellBulk:
         """Test cell bulk with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3", "--set", "test"])
+            result = runner.invoke(
+                app, ["cell", "bulk", path, "Sheet1", "A1:C3", "--set", "test"]
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -3843,8 +4471,21 @@ class TestCellBulk:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "bulk", path, "NonexistentSheet", "A1:C3", "--set", "test"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app,
+                    [
+                        "cell",
+                        "bulk",
+                        path,
+                        "NonexistentSheet",
+                        "A1:C3",
+                        "--set",
+                        "test",
+                    ],
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3856,7 +4497,9 @@ class TestCellBulk:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3"])
 
             assert result.exit_code == 1
@@ -3872,7 +4515,9 @@ class TestCellBulk:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A1:C3", "--set", "Bulk"])
+            result = runner.invoke(
+                app, ["cell", "bulk", path, "Sheet1", "A1:C3", "--set", "Bulk"]
+            )
 
             assert result.exit_code == 0
             assert "Set A1:C3 = Bulk" in result.output
@@ -3897,7 +4542,9 @@ class TestCellBulk:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["cell", "bulk", path, "Sheet1", "A2", "--clear"])
+            result = runner.invoke(
+                app, ["cell", "bulk", path, "Sheet1", "A2", "--clear"]
+            )
 
             assert result.exit_code == 0
             assert "Cleared range A2" in result.output
@@ -3929,8 +4576,12 @@ class TestCellFill:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
-                result = runner.invoke(app, ["cell", "fill", path, "NonexistentSheet", "A1:C3"])
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
+                result = runner.invoke(
+                    app, ["cell", "fill", path, "NonexistentSheet", "A1:C3"]
+                )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -3944,7 +4595,9 @@ class TestCellFill:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            with unittest.mock.patch("xlforge.core.engines.selector.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.core.engines.selector.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["cell", "fill", path, "Sheet1", "A1:C3"])
 
             assert result.exit_code == 1
@@ -4009,7 +4662,18 @@ class TestFormatConditionCommands:
         """Test format-condition add with non-existent file returns error."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "data-bar"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "data-bar",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.FILE_DOES_NOT_EXIST
             assert "does not exist" in result.output.lower()
@@ -4021,7 +4685,18 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "NonExistentSheet", "A1:A10", "--type", "data-bar"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "NonExistentSheet",
+                    "A1:A10",
+                    "--type",
+                    "data-bar",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.SHEET_NOT_FOUND
             assert "Sheet not found" in result.output
@@ -4033,7 +4708,9 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10"])
+            result = runner.invoke(
+                app, ["format-condition", "add", path, "Sheet1", "A1:A10"]
+            )
 
             assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
             assert "--type is required" in result.output
@@ -4045,7 +4722,18 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "invalid"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "invalid",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
             assert "Invalid type" in result.output
@@ -4057,7 +4745,18 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "color-scale",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
             assert "--min and --max colors are required" in result.output
@@ -4069,7 +4768,22 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale", "--min", "invalid", "--max", "#00FF00"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "color-scale",
+                    "--min",
+                    "invalid",
+                    "--max",
+                    "#00FF00",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.INVALID_STYLE_STRING
             assert "Invalid min color" in result.output
@@ -4081,7 +4795,18 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "icon-set"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "icon-set",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
             assert "--icons is required" in result.output
@@ -4093,7 +4818,18 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "formula"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "formula",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
             assert "--formula is required" in result.output
@@ -4111,7 +4847,18 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "data-bar"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "data-bar",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added data bar conditional formatting" in result.output
@@ -4135,7 +4882,22 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale", "--min", "#FF0000", "--max", "#00FF00"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "color-scale",
+                    "--min",
+                    "#FF0000",
+                    "--max",
+                    "#00FF00",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added color scale conditional formatting" in result.output
@@ -4156,7 +4918,24 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "color-scale", "--min", "#FF0000", "--mid", "#FFFF00", "--max", "#00FF00"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "color-scale",
+                    "--min",
+                    "#FF0000",
+                    "--mid",
+                    "#FFFF00",
+                    "--max",
+                    "#00FF00",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added color scale conditional formatting" in result.output
@@ -4170,7 +4949,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "icon-set", "--icons", "3TrafficLights1"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "icon-set",
+                    "--icons",
+                    "3TrafficLights1",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added icon set conditional formatting" in result.output
@@ -4192,7 +4984,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "formula", "--formula", "=A1>100"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "formula",
+                    "--formula",
+                    "=A1>100",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added formula conditional formatting" in result.output
@@ -4214,7 +5019,22 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--type", "formula", "--formula", "=A1>100", "--style", "bold text-#FF0000"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--type",
+                    "formula",
+                    "--formula",
+                    "=A1>100",
+                    "--style",
+                    "bold text-#FF0000",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added formula conditional formatting" in result.output
@@ -4227,7 +5047,10 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--value", "100"])
+            result = runner.invoke(
+                app,
+                ["format-condition", "add", path, "Sheet1", "A1:A10", "--value", "100"],
+            )
 
             assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
             assert "--rule is required" in result.output
@@ -4239,7 +5062,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "invalid", "--value", "100"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "invalid",
+                    "--value",
+                    "100",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.CONDITIONAL_FORMAT_NOT_SUPPORTED
             assert "Invalid rule" in result.output
@@ -4251,7 +5087,18 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "greater-than"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "greater-than",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.INVALID_FORMULA_SYNTAX
             assert "--value is required" in result.output
@@ -4265,7 +5112,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "greater-than", "--value", "100"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "greater-than",
+                    "--value",
+                    "100",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added greater-than rule" in result.output
@@ -4287,7 +5147,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "less-than", "--value", "50"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "less-than",
+                    "--value",
+                    "50",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added less-than rule" in result.output
@@ -4301,7 +5174,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "between", "--value", "10,100"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "between",
+                    "--value",
+                    "10,100",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added between rule" in result.output
@@ -4314,7 +5200,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet", "A1:A10", "--rule", "between", "--value", "100"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet",
+                    "A1:A10",
+                    "--rule",
+                    "between",
+                    "--value",
+                    "100",
+                ],
+            )
 
             assert result.exit_code == ErrorCode.INVALID_FORMULA_SYNTAX
             assert "two values separated by comma" in result.output
@@ -4328,7 +5227,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "equal", "--value", "PASS"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "equal",
+                    "--value",
+                    "PASS",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added equal rule" in result.output
@@ -4342,7 +5254,20 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "contains", "--value", "ERROR"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "contains",
+                    "--value",
+                    "ERROR",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added contains rule" in result.output
@@ -4356,7 +5281,22 @@ class TestFormatConditionCommands:
             wb.save(os.path.join(tmpdir, "test.xlsx"))
 
             path = os.path.join(tmpdir, "test.xlsx")
-            result = runner.invoke(app, ["format-condition", "add", path, "Sheet1", "A1:A10", "--rule", "greater-than", "--value", "100", "--style", "bold"])
+            result = runner.invoke(
+                app,
+                [
+                    "format-condition",
+                    "add",
+                    path,
+                    "Sheet1",
+                    "A1:A10",
+                    "--rule",
+                    "greater-than",
+                    "--value",
+                    "100",
+                    "--style",
+                    "bold",
+                ],
+            )
 
             assert result.exit_code == 0
             assert "Added greater-than rule" in result.output
@@ -4369,9 +5309,12 @@ class TestAppCommands:
     def test_app_visible_xlwings_not_available(self):
         """Test app visible returns FEATURE_UNAVAILABLE when xlwings not installed."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.app.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["app", "visible", path, "true"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -4380,9 +5323,12 @@ class TestAppCommands:
     def test_app_calculate_xlwings_not_available(self):
         """Test app calculate returns FEATURE_UNAVAILABLE when xlwings not installed."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.app.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["app", "calculate", path])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -4391,9 +5337,12 @@ class TestAppCommands:
     def test_app_focus_xlwings_not_available(self):
         """Test app focus returns FEATURE_UNAVAILABLE when xlwings not installed."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.app.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["app", "focus", path])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -4402,9 +5351,12 @@ class TestAppCommands:
     def test_app_alert_xlwings_not_available(self):
         """Test app alert returns FEATURE_UNAVAILABLE when xlwings not installed."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.app.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["app", "alert", path, "Hello"])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -4413,9 +5365,12 @@ class TestAppCommands:
     def test_app_wait_idle_xlwings_not_available(self):
         """Test app wait-idle returns FEATURE_UNAVAILABLE when xlwings not installed."""
         import unittest.mock
+
         with tempfile.TemporaryDirectory() as tmpdir:
             path = os.path.join(tmpdir, "nonexistent.xlsx")
-            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.app.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["app", "wait-idle", path])
 
             assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
@@ -4444,7 +5399,9 @@ class TestAppCommands:
             path = os.path.join(tmpdir, "test.xlsx")
 
             # Mock find_spec to return None for xlwings
-            with unittest.mock.patch("xlforge.commands.app.find_spec", return_value=None):
+            with unittest.mock.patch(
+                "xlforge.commands.app.find_spec", return_value=None
+            ):
                 result = runner.invoke(app, ["app", "visible", path, "true"])
                 assert result.exit_code == ErrorCode.FEATURE_UNAVAILABLE
                 assert "xlwings" in result.output.lower()

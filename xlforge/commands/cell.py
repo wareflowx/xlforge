@@ -139,7 +139,9 @@ def write(
             # Save the workbook
             workbook.save()
 
-            typer.echo(f"Written: {cell_value.raw} ({cell_value.type.value}) to {coord}")
+            typer.echo(
+                f"Written: {cell_value.raw} ({cell_value.type.value}) to {coord}"
+            )
 
     except XlforgeError:
         raise
@@ -263,7 +265,9 @@ def copy(
     src_sheet: Annotated[str, typer.Argument(help="Source sheet name.")],
     src_cell: Annotated[str, typer.Argument(help="Source cell coordinate (e.g., A1).")],
     dst_sheet: Annotated[str, typer.Argument(help="Destination sheet name.")],
-    dst_cell: Annotated[str, typer.Argument(help="Destination cell coordinate (e.g., B1).")],
+    dst_cell: Annotated[
+        str, typer.Argument(help="Destination cell coordinate (e.g., B1).")
+    ],
 ) -> None:
     """Copy a cell value to another location."""
     if not path.exists():
@@ -308,7 +312,9 @@ def copy(
             # Save the workbook
             workbook.save()
 
-            typer.echo(f"Copied {src_sheet}!{src_cell} ({cell_value.raw}) to {dst_sheet}!{dst_cell}")
+            typer.echo(
+                f"Copied {src_sheet}!{src_cell} ({cell_value.raw}) to {dst_sheet}!{dst_cell}"
+            )
 
     except XlforgeError:
         raise
@@ -366,14 +372,21 @@ def search(
 
                 # Parse dimensions to get range
                 try:
-                    from xlforge.core.types.cell_ref import cell_ref_to_row_col, index_to_col
+                    from xlforge.core.types.cell_ref import (
+                        cell_ref_to_row_col,
+                        index_to_col,
+                    )
+
                     start_coord = dimensions.split(":")[0]
                     start_row, start_col = cell_ref_to_row_col(start_coord)
 
                     range_values = engine.get_range(path, sname, dimensions)
                     for row_idx, row in enumerate(range_values):
                         for col_idx, cell_val in enumerate(row):
-                            if cell_val.type == ValueType.STRING and cell_val.raw is not None:
+                            if (
+                                cell_val.type == ValueType.STRING
+                                and cell_val.raw is not None
+                            ):
                                 if query.lower() in str(cell_val.raw).lower():
                                     # Found a match - calculate cell coord (0-based to 1-based)
                                     found_col = index_to_col(start_col + col_idx)
@@ -389,13 +402,17 @@ def search(
                                         }
                                         typer.echo(json.dumps(data, indent=2))
                                     else:
-                                        typer.echo(f"Found in {sname}!{found_coord}: {cell_val.raw}")
+                                        typer.echo(
+                                            f"Found in {sname}!{found_coord}: {cell_val.raw}"
+                                        )
                                     return
 
                     # Also check if query matches in string conversion of other types
                     for row_idx, row in enumerate(range_values):
                         for col_idx, cell_val in enumerate(row):
-                            cell_str = str(cell_val.raw) if cell_val.raw is not None else ""
+                            cell_str = (
+                                str(cell_val.raw) if cell_val.raw is not None else ""
+                            )
                             if query.lower() in cell_str.lower():
                                 found_col = index_to_col(start_col + col_idx)
                                 found_row = start_row + row_idx + 1
@@ -410,7 +427,9 @@ def search(
                                     }
                                     typer.echo(json.dumps(data, indent=2))
                                 else:
-                                    typer.echo(f"Found in {sname}!{found_coord}: {cell_val.raw}")
+                                    typer.echo(
+                                        f"Found in {sname}!{found_coord}: {cell_val.raw}"
+                                    )
                                 return
                 except Exception:
                     continue

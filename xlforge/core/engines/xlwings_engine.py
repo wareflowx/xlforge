@@ -37,6 +37,7 @@ class XlwingsEngine(Engine):
                     "xlwings is not available. Install xlwings: pip install xlwings"
                 )
             import xlwings
+
             self._xlwings = xlwings
         return self._xlwings
 
@@ -187,7 +188,9 @@ class XlwingsEngine(Engine):
 
         # Convert CellValue 2D array to plain Python values
         plain_values: list[list[Any]] = []
-        string_cells: list[tuple[int, int]] = []  # Track (row, col) of string cells (1-indexed)
+        string_cells: list[
+            tuple[int, int]
+        ] = []  # Track (row, col) of string cells (1-indexed)
         for i, row in enumerate(values):
             plain_row: list[Any] = []
             for j, value in enumerate(row):
@@ -267,8 +270,10 @@ class XlwingsEngine(Engine):
             start_row = start_cell.row
             start_col = start_cell.column
 
-            return (start_row <= cell_row + 1 <= start_row + end_row - 1 and
-                    start_col <= cell_col + 1 <= start_col + end_col - 1)
+            return (
+                start_row <= cell_row + 1 <= start_row + end_row - 1
+                and start_col <= cell_col + 1 <= start_col + end_col - 1
+            )
         except Exception:
             return False
 

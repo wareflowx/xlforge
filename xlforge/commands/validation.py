@@ -23,14 +23,25 @@ def add(
     path: Annotated[Path, typer.Argument(help="Path to the workbook file.")],
     sheet: Annotated[str, typer.Argument(help="Sheet name.")],
     range: Annotated[str, typer.Argument(help="Cell range (e.g., A1:A10).")],
-    type: Annotated[str, typer.Option("--type", "-t", help=f"Validation type: {', '.join(VALIDATION_TYPES)}.")],
+    type: Annotated[
+        str,
+        typer.Option(
+            "--type", "-t", help=f"Validation type: {', '.join(VALIDATION_TYPES)}."
+        ),
+    ],
     formula1: Annotated[
         Optional[str],
-        typer.Option("--formula1", "-f1", help="Primary formula or value for validation."),
+        typer.Option(
+            "--formula1", "-f1", help="Primary formula or value for validation."
+        ),
     ] = None,
     formula2: Annotated[
         Optional[str],
-        typer.Option("--formula2", "-f2", help="Secondary formula for 'between' operator (e.g., max value)."),
+        typer.Option(
+            "--formula2",
+            "-f2",
+            help="Secondary formula for 'between' operator (e.g., max value).",
+        ),
     ] = None,
 ) -> None:
     """Add data validation to a range."""
